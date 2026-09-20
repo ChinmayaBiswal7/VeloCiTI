@@ -38,6 +38,11 @@ except Exception as _track_err:
     print(f"[Server] Note: could not mount tracking routes: {_track_err}")
 
 
+# -- Team sign-in (accounts come from the TEAM_MEMBERS environment variable) --
+from auth_api import register_auth_routes
+register_auth_routes(app)
+
+
 
 
 # ── Junction & Road Network Definition (matches roadnet_5j.json) ──

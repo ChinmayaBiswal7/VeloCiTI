@@ -41,7 +41,15 @@ npm run dev
 
 On Windows, `start.bat` launches both. Open http://localhost:5173.
 
-A fresh clone signs in with the demo account `demo@velociti.dev` / `velociti-demo`. To use your own accounts, create `frontend/src/config/teamMembers.local.js` (git-ignored) exporting `TEAM_MEMBERS` in the same shape as `teamMembers.example.js`.
+### Signing in
+
+Sign-in is verified by the backend. Accounts come from the `TEAM_MEMBERS` environment variable (a JSON list with hashed passwords), so no credentials live in the source or the browser bundle. Generate the value with:
+
+```bash
+python "city flow model/scripts/make_team_members.py" you@example.com:your-password
+```
+
+Without `TEAM_MEMBERS`, only the public demo account `demo@velociti.dev` / `velociti-demo` can sign in. Repeated failed attempts from one client are temporarily locked out.
 
 ### One-time model download
 
@@ -61,7 +69,7 @@ Nothing below is required to run locally. Copy the example files and fill them i
 |---|---|
 | `frontend/.env.example` | Firebase web config for live cloud sync (`VITE_FIREBASE_*`) |
 | `prototype/firebase_config.example.json` | Backend Firebase sync (copy to `firebase_config.json`) |
-| `.env.example` | Cloudinary storage, remote AI service URL, CLIP model id |
+| `.env.example` | Team accounts (`TEAM_MEMBERS`), Cloudinary storage, remote AI service URL, CLIP model id |
 
 Secrets and local configuration are git-ignored.
 

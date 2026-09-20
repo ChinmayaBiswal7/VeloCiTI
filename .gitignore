@@ -9,7 +9,6 @@ dist/
 .env.*
 !.env.example
 prototype/firebase_config.json
-frontend/src/config/teamMembers.local.js
 frontend/.firebaserc
 
 # AI tooling

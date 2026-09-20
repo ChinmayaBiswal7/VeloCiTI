@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { login, AUTHORIZED_TEAM_MEMBERS } from '../../../services/authService';
+import { login } from '../../../services/authService';
 import './LoginScreen.css';
 
 export default function LoginScreen({ onLoginSuccess }) {
@@ -10,7 +10,7 @@ export default function LoginScreen({ onLoginSuccess }) {
   const [isLoading, setIsLoading] = useState(false);
   const [showDemoDrawer, setShowDemoDrawer] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError('');
 
@@ -21,23 +21,14 @@ export default function LoginScreen({ onLoginSuccess }) {
 
     setIsLoading(true);
 
-    // Realistic authentication delay
-    setTimeout(() => {
-      const res = login(email, password);
-      setIsLoading(false);
+    const res = await login(email, password);
+    setIsLoading(false);
 
-      if (res.success) {
-        onLoginSuccess(res.user);
-      } else {
-        setError(res.error);
-      }
-    }, 600);
-  }
-
-  function handleQuickFill(acc) {
-    setEmail(acc.email);
-    setPassword(acc.password);
-    setError('');
+    if (res.success) {
+      onLoginSuccess(res.user);
+    } else {
+      setError(res.error);
+    }
   }
 
   return (
