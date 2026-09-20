@@ -1,0 +1,11 @@
+.kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:16px 16px 0; flex-shrink:0; }
+.kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; display:flex; align-items:center; gap:12px; transition:var(--transition); }
+.kpi-card:hover { border-color:rgba(217,119,87,0.3); box-shadow:var(--shadow); }
+.kpi-icon { width:40px; height:40px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+.kpi-icon.blue   { background:var(--blue-dim);  color:var(--blue);  }
+.kpi-icon.amber  { background:var(--amber-dim); color:var(--amber); }
+.kpi-icon.green  { background:var(--green-dim); color:var(--green); }
+.kpi-icon.red    { background:var(--red-dim);   color:var(--red);   }
+.kpi-num { font-size:1.4rem; font-weight:700; color:var(--text); line-height:1; font-variant-numeric:tabular-nums; }
+.kpi-label { font-size:0.72rem; color:var(--text2); margin-top:3px; font-weight:500; }
+.kpi-sub { font-size:0.68rem; color:#b5b1a4; margin-top:2px; }

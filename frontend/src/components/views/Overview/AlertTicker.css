@@ -1,0 +1,11 @@
+﻿.ticker { display:flex; align-items:center; height:32px; background:var(--surface); border-top:1px solid var(--border); flex-shrink:0; overflow:hidden; }
+.ticker-live { display:flex; align-items:center; gap:5px; padding:0 12px; font-size:0.63rem; font-weight:600; color:var(--red); border-right:1px solid var(--border); height:100%; white-space:nowrap; flex-shrink:0; }
+.ticker-live-dot { width:5px; height:5px; border-radius:50%; background:var(--red); animation:pulse-dot 1s infinite; }
+.ticker-scroll { flex:1; overflow:hidden; position:relative; height:100%; }
+.ticker-inner { display:flex; align-items:center; height:100%; white-space:nowrap; animation:scroll-x 60s linear infinite; }
+.ticker-inner:hover { animation-play-state:paused; }
+.ticker-item { font-size:0.65rem; color:var(--text2); padding:0 24px; }
+.ticker-item.crit { color:var(--red);   }
+.ticker-item.warn { color:var(--amber); }
+.ticker-item.ok   { color:var(--green); }
+@keyframes scroll-x { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }

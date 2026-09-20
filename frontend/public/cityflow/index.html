@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="robots" content="noindex, nofollow, noarchive" />
+  <title>CityFlow Multi-Agent Urban Mobility Simulation</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="city_bbsr.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+
+  <!-- Fullscreen Canvas (Mini 5-Junction Mode) -->
+  <div id="canvas-container">
+    <canvas id="simCanvas"></canvas>
+  </div>
+
+  <!-- Fullscreen Real Bhubaneswar Map + AI Multi-Agent Traffic (Full City Mode) -->
+  <div id="bbsr-map-container" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;">
+    <div id="bbsr-leaflet-map" style="width: 100%; height: 100%; background: #171615;"></div>
+    <canvas id="bbsr-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 400;"></canvas>
+  </div>
+
+  <!-- Top Floating Telemetry HUD -->
+  <div class="top-hud">
+    <div class="brand-pill">
+      <span style="font-size:18px">🚦</span>
+      <span class="brand-title" id="brand-title-text">CityFlow Multi-Agent SIH</span>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge badge-agents" id="mini-agents-badge">5 AGENTS ACTIVE</span>
+      <span class="badge badge-agents" id="city-agents-badge" style="background:rgba(99,163,117,0.15); color:#8fbf9d; border-color:rgba(99,163,117,0.4);">46 AGENTS ACTIVE</span>
+    </div>
+
+    <div class="telemetry-bar">
+      <div class="metric-item">
+        <span class="metric-label">Sim Step</span>
+        <span class="metric-val" id="metric-step">0</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-label">Vehicles Active</span>
+        <span class="metric-val" id="metric-veh">0</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-label">Queued Cars</span>
+        <span class="metric-val" id="metric-waiting">0</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-label">Mean Speed</span>
+        <span class="metric-val" id="metric-speed">0.0 km/h</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-label">Avg Travel</span>
+        <span class="metric-val" id="metric-travel">0.0s</span>
+      </div>
+    </div>
+
+    <div class="hud-actions">
+      <button class="btn btn-purple" id="btn-open-dash">📊 City Dashboard</button>
+    </div>
+  </div>
+
+  <!-- Emergency Corridor Banner -->
+  <div class="corridor-banner" id="corridor-banner">
+    <span>🚨</span> ACTIVE EMERGENCY GREEN CORRIDOR: WEST TO EAST ARTERIAL (J1 ➔ J3 ➔ J4)
+  </div>
+
+  <!-- Bottom Floating Control Dock -->
+  <div class="bottom-dock">
+    <button class="btn btn-primary" id="btn-start">▶ Start</button>
+    <button class="btn" id="btn-pause">⏸ Pause</button>
+    <button class="btn" id="btn-step">⏭ Step</button>
+    <button class="btn" id="btn-reset">↺ Reset</button>
+
+    <div class="speed-slider-wrap">
+      <span>Speed</span>
+      <input type="range" id="slider-speed" min="0" max="100" value="50"/>
+      <span id="lbl-speed">1.0×</span>
+    </div>
+
+    <div style="height: 18px; width: 1px; background: rgba(255,255,255,0.15);"></div>
+
+    <!-- Scenarios -->
+    <button class="btn btn-amber" id="btn-incident-toggle">⚠️ Accident (J3)</button>
+    <button class="btn btn-danger" id="btn-ambulance-dispatch">🚑 Ambulance</button>
+
+    <div style="height: 18px; width: 1px; background: rgba(255,255,255,0.15);"></div>
+
+    <!-- Full City Mode Toggle -->
+    <button class="btn btn-fullcity" id="btn-fullcity-toggle" title="Switch to full Bhubaneswar city simulation">🏙️ Full City</button>
+  </div>
+
+  <!-- Map Navigation -->
+  <div class="map-controls">
+    <div class="map-btn" id="btn-zoom-in" title="Zoom In">+</div>
+    <div class="map-btn" id="btn-zoom-out" title="Zoom Out">−</div>
+    <div class="map-btn" id="btn-recenter" title="Recenter Network">⌂</div>
+  </div>
+
+  <!-- Node Drawer -->
+  <div class="node-drawer" id="node-drawer">
+    <div class="drawer-header">
+      <div class="drawer-title">
+        <span>📍</span>
+        <span id="drw-junc-name">Junction J3 (Agent)</span>
+      </div>
+      <button class="close-btn" id="drw-close">✕</button>
+    </div>
+    <div class="drawer-body">
+      <div class="signal-card">
+        <div>
+          <div class="section-lbl">Current Signal Phase</div>
+          <div style="font-size:16px; font-weight:700;" id="drw-phase-name">EW GREEN</div>
+          <div style="font-size:11px; color:var(--text-muted);" id="drw-phase-time">Hold: 18s / Dynamic Max: 45s</div>
+        </div>
+        <div class="signal-indicator sig-green" id="drw-sig-indicator">●</div>
+      </div>
+
+      <div>
+        <div class="section-lbl">Lane-by-Lane Congestion & Density</div>
+        <div class="dir-grid" id="drw-dir-list">
+          <!-- Static Stable Cards (EW & NS) -->
+          <div class="dir-card" id="dir-card-EW">
+            <div class="dir-card-head">
+              <span>EW Approach</span>
+              <span id="dir-EW-status" style="color:#63a375;">LOW (0%)</span>
+            </div>
+            <div class="dir-bar-track">
+              <div class="dir-bar-fill" id="dir-EW-bar" style="width:0%; background:#63a375;"></div>
+            </div>
+            <div class="dir-stats">
+              <div><span>Queue</span><b id="dir-EW-queue">0</b></div>
+              <div><span>Speed</span><b id="dir-EW-speed">0.0</b></div>
+              <div><span>Score</span><b id="dir-EW-score">0.0</b></div>
+              <div><span>Wait</span><b id="dir-EW-wait">0s</b></div>
+            </div>
+          </div>
+
+          <div class="dir-card" id="dir-card-NS">
+            <div class="dir-card-head">
+              <span>NS Approach</span>
+              <span id="dir-NS-status" style="color:#63a375;">LOW (0%)</span>
+            </div>
+            <div class="dir-bar-track">
+              <div class="dir-bar-fill" id="dir-NS-bar" style="width:0%; background:#63a375;"></div>
+            </div>
+            <div class="dir-stats">
+              <div><span>Queue</span><b id="dir-NS-queue">0</b></div>
+              <div><span>Speed</span><b id="dir-NS-speed">0.0</b></div>
+              <div><span>Score</span><b id="dir-NS-score">0.0</b></div>
+              <div><span>Wait</span><b id="dir-NS-wait">0s</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-lbl">🤖 Multi-Agent Coordination Logic</div>
+        <div class="ai-box" id="drw-ai-reasoning">
+          Observing traffic flow...
+        </div>
+      </div>
+
+      <div>
+        <div class="section-lbl">Manual Signal Override</div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn" style="flex:1;" id="btn-override-ew">Force EW Green</button>
+          <button class="btn" style="flex:1;" id="btn-override-ns">Force NS Green</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- City Mode Junction Drawer -->
+  <div class="city-junction-drawer" id="city-junction-drawer">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:14px;">🏙️</span>
+        <span style="font-weight:700; font-size:13px;" id="city-drw-name">Junction</span>
+      </div>
+      <button class="close-btn" id="city-drw-close">✕</button>
+    </div>
+    <div class="signal-card" style="margin-top:4px;">
+      <div>
+        <div class="section-lbl">Signal Phase</div>
+        <div style="font-size:15px; font-weight:700;" id="city-drw-phase">EW GREEN</div>
+        <div style="font-size:11px; color:var(--text-muted);" id="city-drw-hold">Hold: 0s / Max: 30s</div>
+      </div>
+      <div class="signal-indicator sig-green" id="city-drw-sig">●</div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:11px;">
+      <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:8px;">
+        <div style="color:var(--text-muted); margin-bottom:4px;">EW Approach</div>
+        <div>Density: <b id="city-drw-ew-dens">0%</b></div>
+        <div>Queue: <b id="city-drw-ew-q">0</b></div>
+        <div>Score: <b id="city-drw-ew-sc">0.00</b></div>
+      </div>
+      <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:8px;">
+        <div style="color:var(--text-muted); margin-bottom:4px;">NS Approach</div>
+        <div>Density: <b id="city-drw-ns-dens">0%</b></div>
+        <div>Queue: <b id="city-drw-ns-q">0</b></div>
+        <div>Score: <b id="city-drw-ns-sc">0.00</b></div>
+      </div>
+    </div>
+    <div class="ai-box" id="city-drw-reason" style="font-size:10px;">Observing...</div>
+    <div style="display:flex; gap:6px; margin-top:2px;">
+      <button class="btn" style="flex:1; font-size:11px;" id="city-btn-override-ew">Force EW</button>
+      <button class="btn" style="flex:1; font-size:11px;" id="city-btn-override-ns">Force NS</button>
+    </div>
+  </div>
+
+  <!-- Dashboard Modal -->
+  <div class="modal-backdrop" id="dash-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div style="font-size:18px; font-weight:700; display:flex; align-items:center; gap:10px;">
+          <span>🌐</span> Central City Multi-Agent Control Grid
+        </div>
+        <button class="close-btn" id="modal-close" style="font-size:22px;">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="section-lbl">Active Junction Nodes Telemetry</div>
+        <div class="agent-grid" id="modal-agent-grid">
+          <!-- Populated ONCE at setup -->
+        </div>
+
+        <div class="section-lbl">Live Distributed Agent Communication Messages</div>
+        <div class="msg-stream" id="modal-msg-stream"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

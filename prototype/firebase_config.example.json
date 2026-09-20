@@ -1,0 +1,14 @@
+{
+  "enabled": false,
+  "projectId": "your-firebase-project",
+  "apiKey": "",
+  "authDomain": "",
+  "storageBucket": "",
+  "messagingSenderId": "",
+  "appId": "",
+  "measurementId": "",
+  "service_account_file": "",
+  "database_url": "",
+  "use_firestore": true,
+  "use_rtdb": false
+}

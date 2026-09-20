@@ -1,0 +1,12 @@
+﻿.ai-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.ai-score-box { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 12px 0; }
+.ai-ring-container { position: relative; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; }
+.ai-ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ai-ring-bg { fill: none; stroke: var(--surface2); stroke-width: 6; }
+.ai-ring-val { fill: none; stroke: var(--blue); stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+.ai-score-text { position: absolute; font-size: 1.1rem; font-weight: 700; color: var(--text); }
+.ai-meta { display: flex; flex-direction: column; gap: 2px; }
+.ai-meta-label { font-size: 0.65rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+.ai-meta-status { font-size: 0.8rem; font-weight: 600; color: var(--green); }
+.ai-rec-box { padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.72rem; color: var(--text2); line-height: 1.4; display: flex; gap: 8px; align-items: flex-start; }
+.ai-rec-box i { color: var(--amber); margin-top: 2px; flex-shrink: 0; }

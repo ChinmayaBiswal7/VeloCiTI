@@ -1,0 +1,136 @@
+/*
+  VeloCiTI theme layer. Loaded after every component stylesheet.
+  Principles: warm neutrals, one terracotta accent, flat surfaces, hairline borders,
+  serif display type for titles, no decorative glow, blur or grid backgrounds.
+*/
+
+:root {
+  --font-serif: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --border: rgba(255, 248, 235, 0.1);
+  --text3: #8a867a;
+  --radius: 10px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.42);
+  --blue-glow: transparent;
+}
+
+/* Decorative backgrounds and glows are removed entirely */
+.login-bg-grid,
+.login-ambient-orb,
+.portal-ambient-glow,
+.portal-card-glow,
+.portal-grid-overlay {
+  display: none !important;
+}
+
+/* Display type */
+.login-title,
+.portal-title,
+.portal-headline,
+.ls-title,
+.sb-logo-name,
+.vt-title,
+.vt-fb-h2 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.login-title,
+.portal-headline {
+  font-size: 1.7rem;
+  line-height: 1.2;
+}
+
+.sb-logo-name {
+  font-size: 1.15rem;
+}
+
+.sb-logo-name span,
+.ls-title span {
+  color: var(--blue);
+}
+
+/* Surfaces: calm, flat, hairline borders */
+.login-wrapper,
+.portal-wrapper {
+  background: var(--bg) !important;
+}
+
+.login-card,
+.portal-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-md) !important;
+  border-radius: 14px !important;
+}
+
+.portal-card:hover {
+  border-color: rgba(217, 119, 87, 0.45) !important;
+  transform: none !important;
+}
+
+.topbar,
+.portal-header,
+.vt-topbar {
+  background: var(--bg) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.sidebar {
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+}
+
+/* Primary actions: solid accent, no gradients or halos */
+.lw-btn-primary,
+.login-btn,
+.login-submit-btn,
+.portal-launch-btn {
+  background: var(--blue) !important;
+  border-color: var(--blue) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+.lw-btn-primary:hover,
+.login-btn:hover,
+.login-submit-btn:hover,
+.portal-launch-btn:hover {
+  background: #c4643f !important;
+  border-color: #c4643f !important;
+}
+
+/* Keyboard focus is visible everywhere, in the accent colour */
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--blue);
+  outline: none;
+}
+
+/* Quieter scrollbars */
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 248, 235, 0.14);
+}
+
+/* Small caps labels stay small but easier to read */
+.tb-pill-label,
+.lw-card-title,
+.vc-section,
+.ap-field {
+  letter-spacing: 0.05em;
+}
+
+/* Selected text uses the accent */
+::selection {
+  background: rgba(217, 119, 87, 0.35);
+}

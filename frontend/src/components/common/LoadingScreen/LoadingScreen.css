@@ -1,0 +1,10 @@
+﻿.ls { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:9999; }
+.ls-box { text-align:center; }
+.ls-icon { font-size:2.5rem; color:var(--blue); display:block; margin-bottom:16px; animation:ls-spin 2s linear infinite; }
+@keyframes ls-spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+.ls-title { font-size:1.6rem; font-weight:700; color:var(--text); margin-bottom:4px; }
+.ls-title span { color:var(--blue); }
+.ls-sub { font-size:0.75rem; color:var(--text3); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:28px; }
+.ls-bar-wrap { width:260px; height:3px; background:var(--surface2); border-radius:99px; overflow:hidden; margin:0 auto 12px; }
+.ls-bar { height:100%; background:var(--blue); border-radius:99px; transition:width 0.25s ease; }
+.ls-msg { font-size:0.72rem; color:var(--text3); letter-spacing:0.08em; }

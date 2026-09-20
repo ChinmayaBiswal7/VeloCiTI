@@ -1,0 +1,20 @@
+﻿.analytics-view { padding: 16px; display: flex; flex-direction: column; gap: 12px; height: 100%; overflow-y: auto; }
+.analytics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.analytics-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; }
+.analytics-card.full-width { grid-column: 1 / -1; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.card-title { font-size: 0.75rem; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 6px; }
+.chart-container-220 { height: 210px; position: relative; width: 100%; }
+.chart-container-180 { height: 165px; position: relative; width: 100%; }
+.analytics-select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); padding: 4px 8px; font-size: 0.72rem; outline: none; }
+.analytics-select:focus { border-color: var(--blue); }
+.donut-legend { display: flex; justify-content: center; gap: 14px; margin-top: 8px; }
+.donut-leg-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: var(--text2); }
+.donut-dot { width: 8px; height: 8px; border-radius: 50%; }
+.critical-list { display: flex; flex-direction: column; gap: 8px; }
+.crit-row { display: flex; align-items: center; gap: 10px; font-size: 0.73rem; }
+.crit-rank { width: 20px; font-weight: 700; color: var(--text3); font-size: 0.7rem; }
+.crit-name { flex: 1; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crit-bar-bg { width: 90px; height: 4px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+.crit-bar-fill { height: 100%; background: linear-gradient(90deg, var(--amber), var(--red)); border-radius: 99px; }
+.crit-val { width: 45px; text-align: right; font-weight: 600; color: var(--red); font-variant-numeric: tabular-nums; }

@@ -1,0 +1,25 @@
+.lane-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; }
+.panel-title { font-size:0.72rem; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+.lanes-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.lane-card { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px; border-left:3px solid var(--border); }
+.lane-card.green  { border-left-color:var(--green); }
+.lane-card.yellow { border-left-color:var(--amber); }
+.lane-card.red    { border-left-color:var(--red);   }
+.lane-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.lane-dir { font-size:0.65rem; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:0.06em; }
+.lane-light-dot { width:7px; height:7px; border-radius:50%; }
+.lane-light-dot.green  { background:var(--green); box-shadow: none; }
+.lane-light-dot.yellow { background:var(--amber); box-shadow: none; }
+.lane-light-dot.red    { background:var(--red);   box-shadow: none;   }
+.lane-vehicles { font-size:1.15rem; font-weight:700; color:var(--text); line-height:1; font-variant-numeric:tabular-nums; }
+.lane-speed { font-size:0.62rem; color:var(--text3); margin-top:2px; }
+.lane-bar { height:2px; background:var(--surface2); border-radius:99px; overflow:hidden; margin-top:7px; }
+.lane-bar-fill { height:100%; border-radius:99px; transition:width 0.5s ease; }
+.lane-bar-fill.green  { background:var(--green); }
+.lane-bar-fill.yellow { background:var(--amber); }
+.lane-bar-fill.red    { background:var(--red);   }
+.lane-foot { display:flex; justify-content:space-between; align-items:center; margin-top:6px; }
+.lane-badge { font-size:0.55rem; color:var(--text3); display:flex; align-items:center; gap:3px; }
+.lane-badge.manual { color:var(--amber); }
+.lane-cctv-btn { padding:3px 7px; background:rgba(217,119,87,0.12); border:1px solid rgba(217,119,87,0.3); border-radius:4px; color:#d97757; font-size:0.62rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px; transition:all 0.15s ease; }
+.lane-cctv-btn:hover { background:#d97757; color:#ffffff; box-shadow: none; }

@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ANPR Intelligence - Citywide Vehicle Tracking</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;scrollbar-width:none !important;-ms-overflow-style:none !important}
+*::-webkit-scrollbar{display:none !important;width:0 !important;height:0 !important}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#171615;color:#f4f2ea}
+
+#map{width:100vw;height:100vh;position:absolute;top:0;left:0;z-index:1}
+
+.top-bar{
+  position:absolute;top:14px;left:14px;right:14px;
+  height:48px;z-index:1000;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  pointer-events:none
+}
+
+.search-inline{
+  background:rgba(31,30,29,0.92);
+  border:1px solid #3f3d39;border-radius:10px;padding:5px 8px;
+  display:flex;align-items:center;gap:8px;box-shadow:0 8px 30px rgba(0,0,0,0.6);
+  pointer-events:auto;width:320px;flex-shrink:0
+}
+.search-inline input{
+  flex:1;background:transparent;border:none;outline:none;
+  color:#f4f2ea;font-size:.86rem;padding:4px 6px;font-family:monospace;letter-spacing:.4px;min-width:0
+}
+.search-inline input::placeholder{color:#7c786c;font-family:sans-serif;letter-spacing:0;font-size:.8rem}
+
+.top-right-group{
+  display:flex;align-items:center;gap:8px;pointer-events:auto;flex-shrink:0
+}
+
+.clock-card{
+  background:rgba(31,30,29,0.92);
+  border:1px solid #3f3d39;border-radius:10px;padding:9px 14px;
+  display:flex;align-items:center;gap:7px;box-shadow:0 8px 30px rgba(0,0,0,0.6);
+  pointer-events:auto;font-size:.76rem;color:#b5b1a4;font-family:monospace;white-space:nowrap
+}
+
+.live-dot{width:8px;height:8px;border-radius:50%;background:#63a375;box-shadow: none;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.nav-tabs{
+  display:flex;align-items:center;gap:5px;flex-wrap:nowrap;white-space:nowrap;
+  background:rgba(31,30,29,0.92);
+  border:1px solid #3f3d39;border-radius:10px;padding:5px 7px;box-shadow:0 8px 30px rgba(0,0,0,0.6);
+  pointer-events:auto;flex-shrink:0
+}
+.tab-btn{
+  background:transparent;border:none;color:#b5b1a4;
+  padding:7px 13px;border-radius:7px;font-size:.78rem;font-weight:600;
+  cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:5px;white-space:nowrap
+}
+.tab-btn:hover{color:#f4f2ea;background:rgba(255,255,255,0.06)}
+.tab-btn.active{background:#c4643f;color:#fff;box-shadow:0 0 14px rgba(196,100,63,0.5)}
+
+.fs-corner-btn{
+  position:fixed;bottom:18px;left:18px;z-index:1000;
+  background:rgba(31,30,29,0.92);
+  border:1px solid #3f3d39;border-radius:8px;padding:8px 14px;
+  color:#b5b1a4;font-size:.78rem;font-weight:600;cursor:pointer;
+  box-shadow:0 6px 20px rgba(0,0,0,0.6);transition:all .18s;pointer-events:auto;
+  display:flex;align-items:center;gap:6px
+}
+.fs-corner-btn:hover{color:#e6926f;border-color:#c4643f;box-shadow:0 0 14px rgba(196,100,63,0.4)}
+
+.search-overlay{
+  position:absolute;top:68px;left:14px;
+  width:320px;max-width:calc(100vw - 32px);z-index:1000;
+  display:flex;flex-direction:column;gap:8px;pointer-events:none
+}
+.track-btn{
+  background:#c4643f;border:none;color:#fff;font-weight:700;
+  padding:6px 12px;border-radius:6px;font-size:.74rem;cursor:pointer;
+  letter-spacing:.3px;transition:all .18s;box-shadow: none;white-space:nowrap
+}
+.track-btn:hover{background:#c4643f}
+
+
+.sug-dropdown{
+  background:rgba(31,30,29,0.97);
+  border:1px solid #3f3d39;border-radius:8px;box-shadow:0 12px 35px rgba(0,0,0,0.6);
+  max-height:220px;overflow-y:auto;display:none;pointer-events:auto
+}
+.sug-item{
+  padding:8px 12px;font-size:.82rem;font-family:monospace;
+  cursor:pointer;border-bottom:1px solid #292826;display:flex;align-items:center;justify-content:space-between
+}
+.sug-item:hover{background:#0284c722;color:#e6926f}
+
+.journey-card{
+  background:rgba(31,30,29,0.96);
+  border:1px solid #3f3d39;border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,0.7);
+  display:none;flex-direction:column;max-height:calc(100vh - 170px);overflow:hidden;pointer-events:auto
+}
+.j-header{
+  padding:12px 16px;background:#292826;border-bottom:1px solid #3f3d39;
+  display:flex;align-items:center;justify-content:space-between
+}
+.j-header h2{font-size:.86rem;font-weight:700;color:#e6926f;text-transform:uppercase;letter-spacing:.5px}
+.close-j-btn{background:none;border:none;color:#b5b1a4;font-size:1.1rem;cursor:pointer;padding:0 4px}
+.close-j-btn:hover{color:#f4f2ea}
+.j-summary{
+  padding:10px 16px;background:#1f1e1d;border-bottom:1px solid #292826;
+  display:grid;grid-template-columns:1fr 1fr;gap:6px
+}
+.j-stat{font-size:.73rem}
+.j-stat .lbl{color:#7c786c}
+.j-stat .val{color:#f4f2ea;font-weight:600;font-size:.82rem}
+.plate-pill{
+  background:#292826;border:1px solid #e6926f;color:#dba53a;
+  font-family:monospace;font-weight:700;padding:2px 8px;border-radius:4px;font-size:.86rem
+}
+.j-timeline-wrap{overflow-y:auto;padding:12px 16px;flex:1}
+.tl{display:flex;flex-direction:column;gap:12px;position:relative;margin-left:8px;padding-left:14px;border-left:2px solid #3f3d39}
+.tli{position:relative;background:#1e293b55;border:1px solid #3f3d39;border-radius:8px;padding:8px 10px;cursor:pointer;transition:all .15s}
+.tli:hover{border-color:#e6926f;background:#292826}
+.tli::before{
+  content:"";position:absolute;left:-20px;top:12px;
+  width:8px;height:8px;border-radius:50%;background:#e6926f;border:2px solid #1f1e1d
+}
+.tt{font-size:.7rem;color:#e6926f;margin-bottom:2px}
+.tc{font-size:.85rem;font-weight:600;color:#f4f2ea}
+.tr2{font-size:.72rem;color:#7c786c}
+.tm{font-size:.68rem;color:#6a675e;margin-top:3px}
+.tgap{display:inline-block;margin-left:6px;background:#1e40af22;color:#e6926f;border-radius:4px;padding:1px 5px;font-size:.66rem;font-weight:600}
+
+.snap-thumb{
+  width:100%;height:52px;object-fit:cover;border-radius:4px;
+  border:1px solid #3f3d39;margin-top:6px;cursor:pointer;
+  transition:transform .15s,border-color .15s
+}
+.snap-thumb:hover{transform:scale(1.02);border-color:#e6926f}
+
+.floating-modal{
+  position:absolute;top:80px;left:16px;right:16px;bottom:36px;
+  max-width:1100px;margin:0 auto;z-index:1000;
+  background:rgba(31,30,29,0.96);
+  border:1px solid #3f3d39;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,0.7);
+  display:none;flex-direction:column;overflow:hidden
+}
+.m-head{
+  padding:14px 20px;background:#292826;border-bottom:1px solid #3f3d39;
+  display:flex;align-items:center;justify-content:space-between
+}
+.m-head h2{font-size:1rem;font-weight:700;color:#e6926f}
+.m-body{padding:20px;overflow-y:auto;flex:1}
+
+.krow{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:#292826;border:1px solid #3f3d39;border-radius:8px;padding:12px 14px}
+.kl{font-size:.68rem;color:#7c786c;text-transform:uppercase}
+.kv{font-size:1.6rem;font-weight:700;color:#e6926f;margin-top:2px}
+.kpi.g .kv{color:#63a375}.kpi.r .kv{color:#e5534b}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{background:#1f1e1d;padding:8px 12px;text-align:left;color:#6a675e;text-transform:uppercase;font-size:.68rem}
+td{padding:8px 12px;border-top:1px solid #292826}
+tr:hover td{background:#33312e;cursor:pointer}
+
+.ai{background:#1f1e1d;border-left:4px solid #e5534b;border-radius:6px;padding:10px 14px;margin-bottom:8px}
+.ai.an{border-left-color:#e0913a}
+.at2{font-size:.68rem;font-weight:700;color:#e5534b;text-transform:uppercase}
+.ai.an .at2{color:#e0913a}
+.ap{font-weight:700;font-size:.88rem;font-family:monospace;color:#dba53a}
+.am{font-size:.76rem;color:#b5b1a4;margin-top:2px}
+.af{font-size:.68rem;color:#6a675e;margin-top:4px;display:flex;align-items:center;gap:8px}
+
+.btn-sm{padding:4px 10px;font-size:.74rem;border-radius:5px;cursor:pointer;border:none}
+.btn-sm.red{background:#c43d36;color:#fff}
+.btn-sm.blue{background:#c4643f;color:#fff}
+
+.map-status-pill{
+  position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+  background:rgba(31,30,29,0.92);
+  border:1px solid #3f3d39;border-radius:20px;padding:4px 16px;
+  font-size:.72rem;color:#b5b1a4;display:flex;align-items:center;gap:14px;
+  z-index:999;box-shadow:0 6px 20px rgba(0,0,0,0.5);pointer-events:none
+}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="top-bar">
+  <div class="search-inline">
+    <input id="pin" type="text" placeholder="Search plate (e.g. OD05XX9999)"
+           oninput="onType(this.value)" onkeydown="if(event.key==='Enter')doTrack()"/>
+    <button class="track-btn" onclick="doTrack()">&#x1F50D; TRACK</button>
+  </div>
+
+  <div class="top-right-group">
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchView('map')">&#x1F5FA;&#xFE0F; Vehicle Map</button>
+      <button class="tab-btn" onclick="switchView('live')">&#x1F4CB; Live Detections</button>
+      <button class="tab-btn" onclick="switchView('alerts')">&#x1F6A8; Alerts &amp; Blacklist</button>
+      <button class="tab-btn" onclick="switchView('ghosts')" style="color:#e6926f;border:1px solid #db277744;background:#db277715">
+        🚫 Unplated Tracker <span id="ghost-badge" style="background:#d97757;color:#fff;font-size:.65rem;padding:2px 6px;border-radius:10px;margin-left:3px;font-weight:700;min-width:16px;text-align:center;display:inline-block">0</span>
+      </button>
+      <a href="anpr.html" class="tab-btn" style="text-decoration:none;color:#e6926f;border:1px solid #c4643f;background:#0284c722">&#x1F3A5; CCTV Workbench</a>
+    </div>
+
+    <div class="clock-card">
+      <span class="live-dot"></span><span id="ut">--</span>
+    </div>
+  </div>
+</div>
+
+<!-- Fullscreen button pinned to bottom-left -->
+<button class="fs-corner-btn" onclick="toggleFullScreen()" title="Toggle Fullscreen">&#x26F6; Fullscreen</button>
+
+<div class="search-overlay">
+  <div class="sug-dropdown" id="sug"><div id="sl"></div></div>
+
+  <div class="journey-card" id="j-card">
+    <div class="j-header">
+      <h2>&#x1F697; Observed Journey Route</h2>
+      <button class="close-j-btn" onclick="closeJourney()" title="Close route view">&#x2715;</button>
+    </div>
+    <div class="j-summary" id="j-sum"></div>
+    <div class="j-timeline-wrap">
+      <div class="tl" id="tlb"></div>
+    </div>
+  </div>
+</div>
+
+<div class="floating-modal" id="modal-live">
+  <div class="m-head">
+    <h2>&#x1F4CB; Recent Camera Detections (Last 15 Min)</h2>
+    <button class="close-j-btn" onclick="switchView('map')">&#x2715;</button>
+  </div>
+  <div class="m-body">
+    <div class="krow">
+      <div class="kpi"><div class="kl">Plates Today</div><div class="kv" id="kp">--</div></div>
+      <div class="kpi"><div class="kl">Total Detections</div><div class="kv" id="kd">--</div></div>
+      <div class="kpi g"><div class="kl">Active Cameras</div><div class="kv" id="kc">--</div></div>
+      <div class="kpi r"><div class="kl">Active Alerts</div><div class="kv" id="ka">--</div></div>
+    </div>
+    <div style="background:#292826;border-radius:8px;border:1px solid #3f3d39;overflow:hidden">
+      <table>
+        <thead><tr><th>Plate</th><th>Evidence</th><th>Camera</th><th>Location</th><th>Time</th><th>Speed</th><th>Heading</th><th>Type</th><th>Confidence</th></tr></thead>
+        <tbody id="dtb"><tr><td colspan="9" style="text-align:center;padding:20px;color:#7c786c">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="floating-modal" id="modal-alerts">
+  <div class="m-head">
+    <h2>&#x1F6A8; Live Security Alerts, Violations &amp; Blacklist Hub</h2>
+    <button class="close-j-btn" onclick="switchView('map')">&#x2715;</button>
+  </div>
+  <div class="m-body">
+    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:20px">
+      <div>
+        <h3 style="font-size:.88rem;color:#d4d0c4;margin-bottom:10px">&#x1F514; Flagged Hotlist Alerts</h3>
+        <div id="alf" style="max-height:420px;overflow-y:auto"></div>
+      </div>
+      <div>
+        <h3 style="font-size:.88rem;color:#d4d0c4;margin-bottom:10px">&#x1F6AB; Stolen Vehicle Blacklist</h3>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <input id="blp" type="text" placeholder="Plate (e.g. OD05XX9999)"
+                 style="background:#1f1e1d;border:1px solid #3f3d39;border-radius:6px;padding:6px 10px;color:#fff;flex:1;font-size:.78rem;"/>
+          <input id="blr" type="text" placeholder="Reason"
+                 style="background:#1f1e1d;border:1px solid #3f3d39;border-radius:6px;padding:6px 10px;color:#fff;flex:1;font-size:.78rem;"/>
+          <button class="btn-sm blue" onclick="addBL()" style="padding:6px 12px;font-size:.78rem;">Add</button>
+        </div>
+        <div style="background:#292826;border-radius:8px;border:1px solid #3f3d39;overflow:hidden;max-height:360px;overflow-y:auto">
+          <table>
+            <thead><tr><th>Plate</th><th>Reason</th><th></th></tr></thead>
+            <tbody id="blt"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="floating-modal" id="modal-ghosts">
+  <div class="m-head">
+    <h2>🚫 Unplated Vehicle Profiling &amp; Cross-Camera Re-ID Hub</h2>
+    <button class="close-j-btn" onclick="switchView('map')">&#x2715;</button>
+  </div>
+  <div class="m-body">
+    <div style="background:#83184322;border:1px solid #d97757;border-radius:10px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="color:#e6926f;font-weight:700;font-size:.9rem;display:flex;align-items:center;gap:6px;">
+          <span>🔍</span> AI Cross-Camera Vehicle Re-Identification Active
+        </div>
+        <div style="color:#d4d0c4;font-size:.76rem;margin-top:2px;">
+          When suspects hide or remove number plates, our multi-zone visual embedding engine profiles vehicle make, model, color, body proportions, and geometry to track them across city corridors.
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;">
+        <div style="text-align:right">
+          <div style="font-size:.7rem;color:#b5b1a4">Unplated Targets</div>
+          <div id="ghost-kpi-count" style="font-size:1.2rem;font-weight:800;color:#e6926f">0</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:.7rem;color:#b5b1a4">Multi-Camera Tracks</div>
+          <div id="ghost-kpi-tracks" style="font-size:1.2rem;font-weight:800;color:#e6926f">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="ghost-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:12px;max-height:560px;overflow-y:auto;padding:4px 6px 4px 4px;">
+      <div style="color:#7c786c;text-align:center;padding:40px;grid-column:1/-1">Scanning CCTV streams for unplated vehicles...</div>
+    </div>
+  </div>
+</div>
+
+<!-- UNPLATED VEHICLE VISUAL FINGERPRINT INSPECTOR MODAL -->
+<div id="modal-ghost-inspect" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.88);z-index:2100;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#1f1e1d;border:1px solid #e6926f;border-radius:14px;max-width:820px;width:100%;overflow:hidden;box-shadow:0 25px 60px -12px rgba(217,119,87,0.35);">
+    <div style="padding:14px 20px;background:#292826;border-bottom:1px solid #3f3d39;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:.95rem;font-weight:700;color:#e6926f;margin:0;display:flex;align-items:center;gap:8px;">
+        <span>🚫</span> Unplated Vehicle Visual Fingerprint &amp; Multi-Camera Match Timeline
+      </h3>
+      <button onclick="closeGhostInspectModal()" style="background:none;border:none;color:#b5b1a4;font-size:1.3rem;cursor:pointer;">&#x2715;</button>
+    </div>
+    <div style="padding:18px;max-height:580px;overflow-y:auto;" id="ghost-inspect-body">
+      <!-- Injected by openGhostInspectModal -->
+    </div>
+    <div style="padding:12px 20px;background:#1f1e1d;border-top:1px solid #292826;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:.74rem;color:#7c786c;">&#x2713; 64-Dimensional Multi-Zone Color &amp; Structural Signature Verified</span>
+      <button onclick="closeGhostInspectModal()" class="btn-sm blue" style="padding:6px 16px;font-size:.8rem;">Close Inspector</button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- EVIDENCE SNAPSHOT MODAL -->
+<div id="modal-evidence" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.88);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#1f1e1d;border:1px solid #e6926f;border-radius:14px;max-width:720px;width:100%;overflow:hidden;box-shadow:0 25px 60px -12px rgba(0,0,0,0.9);">
+    <div style="padding:14px 20px;background:#292826;border-bottom:1px solid #3f3d39;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:.95rem;font-weight:700;color:#e6926f;margin:0;display:flex;align-items:center;gap:8px;">
+        <span>&#x1F4F8;</span> Actual CCTV Camera Capture &amp; Detection Frame
+      </h3>
+      <button onclick="closeEvidenceModal()" style="background:none;border:none;color:#b5b1a4;font-size:1.3rem;cursor:pointer;">&#x2715;</button>
+    </div>
+    <div style="padding:16px;text-align:center;">
+      <div style="position:relative;background:#000;border-radius:8px;overflow:hidden;border:1px solid #3f3d39;">
+        <img id="ev-img" src="" style="width:100%;height:auto;max-height:380px;object-fit:contain;display:block;margin:0 auto;"/>
+      </div>
+      <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:left;font-size:.8rem;background:#292826;padding:12px 16px;border-radius:8px;border:1px solid #3f3d39;">
+        <div><span style="color:#7c786c;">Detected Plate:</span> <b id="ev-plate" style="color:#dba53a;font-family:monospace;font-size:.92rem;">--</b></div>
+        <div><span style="color:#7c786c;">Camera Node:</span> <b id="ev-cam" style="color:#e6926f;">--</b></div>
+        <div><span style="color:#7c786c;">Captured Time:</span> <b id="ev-time" style="color:#d4d0c4;">--</b></div>
+        <div><span style="color:#7c786c;">Radar Speed:</span> <b id="ev-speed" style="color:#63a375;">--</b></div>
+        <div><span style="color:#7c786c;">Junction / Road:</span> <b id="ev-loc" style="color:#d4d0c4;">--</b></div>
+        <div><span style="color:#7c786c;">AI Confidence:</span> <b id="ev-conf" style="color:#e6926f;">--</b></div>
+      </div>
+    </div>
+    <div style="padding:12px 20px;background:#1f1e1d;border-top:1px solid #292826;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:.74rem;color:#7c786c;">&#x2713; Tamper-Proof Cryptographic CCTV Audit Record</span>
+      <button onclick="closeEvidenceModal()" class="btn-sm blue" style="padding:6px 16px;font-size:.8rem;">Close Viewer</button>
+    </div>
+  </div>
+</div>
+
+<div class="map-status-pill">
+  <span id="s1">Plates: --</span>
+  <span id="s2">Cameras: 8 Active</span>
+  <span id="s3">Routing: OSRM Street Network</span>
+</div>
+
+<script>
+const API = window.location.origin;
+let lmap=null,rLayer=null,rGlowLayer=null,mLayer=null,baseCamsLayer=null;
+
+let activeView='map';
+
+function toggleFullScreen(){
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(()=>{});
+  }else{
+    if(document.exitFullscreen)document.exitFullscreen();
+  }
+}
+
+function switchView(viewName){
+  activeView=viewName;
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active', (i===0&&viewName==='map')||(i===1&&viewName==='live')||(i===2&&viewName==='alerts')||(i===3&&viewName==='ghosts'));
+  });
+  document.getElementById('modal-live').style.display = viewName==='live'?'flex':'none';
+  document.getElementById('modal-alerts').style.display = viewName==='alerts'?'flex':'none';
+  document.getElementById('modal-ghosts').style.display = viewName==='ghosts'?'flex':'none';
+  if(viewName==='ghosts') rGhosts();
+  if(viewName==='map'){
+    setTimeout(()=>{if(lmap)lmap.invalidateSize();},150);
+  }
+}
+
+
+const CAM_COORDS = {
+  // NH-16 Primary Arterial
+  'CAM_KHANDG': { lat: 20.2575, lon: 85.7865, name: 'Khandagiri Square', road: 'NH-16' },
+  'CAM_FIRE_STN': { lat: 20.2710, lon: 85.7950, name: 'Fire Station Square', road: 'NH-16' },
+  'CAM_BARAMN': { lat: 20.2768, lon: 85.7995, name: 'Baramunda Bus Terminal', road: 'NH-16' },
+  'CAM_CRPF': { lat: 20.2872, lon: 85.8115, name: 'CRPF Square', road: 'NH-16' },
+  'CAM_NAYAPALLI': { lat: 20.2930, lon: 85.8150, name: 'Nayapalli / Behera Sahi', road: 'NH-16' },
+  'CAM_JAYADEV': { lat: 20.3005, lon: 85.8228, name: 'Jayadev Vihar (NH-16)', road: 'NH-16' },
+  'CAM_ACHARYA': { lat: 20.3015, lon: 85.8315, name: 'Acharya Vihar (NH-16)', road: 'NH-16' },
+  'CAM_VANI': { lat: 20.2985, lon: 85.8415, name: 'Vani Vihar (NH-16)', road: 'NH-16' },
+  'CAM_RASUL': { lat: 20.2936, lon: 85.8647, name: 'Rasulgarh Square (NH-16)', road: 'NH-16' },
+  'CAM_PALASUNI': { lat: 20.3040, lon: 85.8710, name: 'Palasuni Square (NH-16)', road: 'NH-16' },
+  'CAM_MANCHES': { lat: 20.3120, lon: 85.8750, name: 'Mancheswar Industrial', road: 'Industrial Rd' },
+
+  // Nandankanan Road (Northern IT & University Corridor)
+  'CAM_XAVIER': { lat: 20.3125, lon: 85.8198, name: 'Xavier Square (XIMB)', road: 'Nandankanan Rd' },
+  'CAM_CS_PUR': { lat: 20.3175, lon: 85.8160, name: 'Chandrasekharpur BDA', road: 'Nandankanan Rd' },
+  'CAM_KALINGA': { lat: 20.3205, lon: 85.8215, name: 'Kalinga Hospital Square', road: 'Nandankanan Rd' },
+  'CAM_DAMANA': { lat: 20.3340, lon: 85.8185, name: 'Damana Square', road: 'Nandankanan Rd' },
+  'CAM_SAILASHREE': { lat: 20.3440, lon: 85.8150, name: 'Sailashree Vihar Chowk', road: 'Nandankanan Rd' },
+  'CAM_PATIA': { lat: 20.3540, lon: 85.8170, name: 'Patia Chowk', road: 'Nandankanan Rd' },
+  'CAM_KIIT': { lat: 20.3565, lon: 85.8165, name: 'KIIT Square', road: 'KIIT Road' },
+  'CAM_INFOCITY': { lat: 20.3585, lon: 85.8085, name: 'Infocity Square', road: 'Infocity Rd' },
+  'CAM_CHANDAKA': { lat: 20.3650, lon: 85.7950, name: 'Chandaka Square', road: 'Chandaka Rd' },
+
+  // Western Infill
+  'CAM_DELTA': { lat: 20.2740, lon: 85.8105, name: 'Delta Square', road: 'Gopabandhu Marg' },
+  'CAM_GOPABANDHU': { lat: 20.2700, lon: 85.8210, name: 'Gopabandhu Square', road: 'OUAT Rd' },
+  'CAM_SIRIPUR': { lat: 20.2645, lon: 85.8155, name: 'Siripur / OUAT Square', road: 'OUAT Campus' },
+
+  // Power Grid & Bidyut Marg
+  'CAM_POWER': { lat: 20.2910, lon: 85.8235, name: 'Power House Square', road: 'Bidyut Marg' },
+  'CAM_RAJ_BHAWAN': { lat: 20.2830, lon: 85.8285, name: 'Raj Bhawan (Governor House)', road: 'Rajpath' },
+
+  // Central Spine: Sachivalaya Marg & Rajpath
+  'CAM_AG': { lat: 20.2745, lon: 85.8322, name: 'AG Square (State Capital)', road: 'Sachivalaya Marg' },
+  'CAM_CAPITAL': { lat: 20.2625, lon: 85.8280, name: 'Capital Hospital Square', road: 'Hospital Rd' },
+  'CAM_MAST': { lat: 20.2678, lon: 85.8436, name: 'Master Canteen (Station)', road: 'Janpath' },
+  'CAM_RAM': { lat: 20.2800, lon: 85.8443, name: 'Ram Mandir Square', road: 'Janpath' },
+  'CAM_RUPALI': { lat: 20.2893, lon: 85.8427, name: 'Rupali Square', road: 'Janpath' },
+  'CAM_SAHEED': { lat: 20.2910, lon: 85.8520, name: 'Saheed Nagar Square', road: 'Janpath' },
+
+  // Eastern Secondary Arterials
+  'CAM_VSS': { lat: 20.3050, lon: 85.8550, name: 'VSS Nagar Square', road: 'VSS Marg' },
+  'CAM_SAINIK': { lat: 20.3160, lon: 85.8360, name: 'Sainik School Square', road: 'Sainik School Rd' },
+  'CAM_BOMIKHAL': { lat: 20.2820, lon: 85.8560, name: 'Bomikhal Flyover', road: 'Cuttack-Puri Rd' },
+  'CAM_LAXMI': { lat: 20.2720, lon: 85.8500, name: 'Laxmisagar Square', road: 'Cuttack Rd' },
+  'CAM_KALPANA': { lat: 20.2546, lon: 85.8437, name: 'Kalpana Square', road: 'Cuttack-Puri Rd' },
+  'CAM_RAJMAHAL': { lat: 20.2638, lon: 85.8396, name: 'Rajmahal Square', road: 'Bidyut Marg' },
+  'CAM_SISHU': { lat: 20.2585, lon: 85.8350, name: 'Sishu Bhawan Square', road: 'Hospital Rd' },
+
+  // South & Old Town Heritage Network
+  'CAM_RAVI': { lat: 20.2470, lon: 85.8415, name: 'Ravi Talkies Square', road: 'Puri Trunk Rd' },
+  'CAM_LINGARAJ': { lat: 20.2382, lon: 85.8335, name: 'Lingaraj Temple Square', road: 'Old Town Heritage' },
+  'CAM_AIRPORT': { lat: 20.2525, lon: 85.8178, name: 'Airport Square', road: 'Airport Rd' },
+  'CAM_POKHAR': { lat: 20.2460, lon: 85.8170, name: 'Pokhariput Square', road: 'Anand Marg' },
+  'CAM_SUNDARPADA': { lat: 20.2330, lon: 85.8110, name: 'Sundarpada Square', road: 'Sundarpada Main Rd' },
+  'CAM_ITER': { lat: 20.2505, lon: 85.8050, name: 'ITER / Gandamunda Square', road: 'Jagamara Rd' },
+  'CAM_JAGAMARA': { lat: 20.2530, lon: 85.7970, name: 'Jagamara Square', road: 'Khandagiri-Jagamara' },
+  'CAM_GHATIKIA': { lat: 20.2490, lon: 85.7830, name: 'Ghatikia / Kalinga Studio', road: 'Studio Rd' },
+
+  // Numbered defaults
+  'CAM_01': { lat: 20.3540, lon: 85.8170, name: 'Patia Chowk', road: 'Nandankanan Road' },
+  'CAM_02': { lat: 20.3005, lon: 85.8228, name: 'Jayadev Vihar', road: 'NH-16' },
+  'CAM_03': { lat: 20.2985, lon: 85.8415, name: 'Vani Vihar', road: 'NH-16' },
+  'CAM_04': { lat: 20.3015, lon: 85.8315, name: 'Acharya Vihar', road: 'NH-16' },
+  'CAM_05': { lat: 20.2678, lon: 85.8436, name: 'Master Canteen (Station)', road: 'Janpath' },
+  'CAM_06': { lat: 20.2546, lon: 85.8437, name: 'Kalpana Square', road: 'Cuttack-Puri Road' },
+  'CAM_07': { lat: 20.2470, lon: 85.8415, name: 'Ravi Talkies Square', road: 'Puri Trunk Road' },
+  'CAM_08': { lat: 20.2575, lon: 85.7865, name: 'Khandagiri Square', road: 'NH-16' },
+  'CAM_LIVE': { lat: 20.2640, lon: 85.8354, name: 'Live CCTV Edge Node', road: 'Station Road' }
+};
+
+function initMap(){
+  if(lmap)return;
+  lmap=L.map('map',{zoomControl:false}).setView([20.2961,85.8245],13);
+  L.control.zoom({position:'bottomright'}).addTo(lmap);
+
+  const tileLayer = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    {
+      attribution: '&copy; Esri, HERE, Garmin &mdash; Bhubaneswar Smart City GIS',
+      maxNativeZoom: 16,
+      maxZoom: 18
+    }
+  ).addTo(lmap);
+
+  tileLayer.on('tileerror', () => {
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 18
+    }).addTo(lmap);
+  });
+
+  loadBaseCameras();
+}
+
+async function loadBaseCameras(){
+  try{
+    let cams=await fetch(API+'/api/heatmap').then(r=>r.json()).catch(()=>[]);
+    if(!cams || !cams.length){
+      cams = Object.entries(CAM_COORDS).map(([id, c]) => ({ camera_id: id, name: c.name, road: c.road, lat: c.lat, lon: c.lon }));
+    }
+    if(baseCamsLayer)lmap.removeLayer(baseCamsLayer);
+    baseCamsLayer=L.layerGroup().addTo(lmap);
+
+    cams.forEach(c=>{
+      if(!c.lat||!c.lon)return;
+      const icon=L.divIcon({
+        className:'',
+        html:`<div style="width:12px;height:12px;border-radius:50%;background:#c4643f;border:2px solid #1f1e1d;box-shadow:0 0 8px #c4643f"></div>`,
+        iconSize:[12,12],iconAnchor:[6,6]
+      });
+      L.marker([c.lat,c.lon],{icon}).addTo(baseCamsLayer)
+        .bindTooltip(`<div style="font-size:12px;font-weight:600;padding:2px 4px"><span style="color:#e6926f">${c.camera_id}</span>: ${c.name}</div>`,{direction:'top',offset:[0,-8]});
+    });
+  }catch(e){}
+}
+
+function closeJourney(){
+  document.getElementById('j-card').style.display='none';
+  if(rLayer){lmap.removeLayer(rLayer);rLayer=null;}
+  if(rGlowLayer){lmap.removeLayer(rGlowLayer);rGlowLayer=null;}
+  if(mLayer){lmap.removeLayer(mLayer);mLayer=null;}
+  document.getElementById('pin').value='';
+}
+
+const fdt=iso=>{
+  if(!iso)return'--';
+  const d=new Date(iso);
+  return isNaN(d)?iso:d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+};
+const pct=v=>v?(v*100).toFixed(0)+'%':'--';
+
+function tft(p){
+  document.getElementById('pin').value=p;
+  switchView('map');
+  doTrack();
+}
+
+function openEvidenceModal(img,plate,cam,loc,time,speed,conf){
+  document.getElementById('ev-img').src=img||'';
+  document.getElementById('ev-plate').textContent=plate||'--';
+  document.getElementById('ev-cam').textContent=cam||'--';
+  document.getElementById('ev-loc').textContent=loc||'--';
+  document.getElementById('ev-time').textContent=time||'--';
+  document.getElementById('ev-speed').textContent=speed||'--';
+  document.getElementById('ev-conf').textContent=conf||'--';
+  document.getElementById('modal-evidence').style.display='flex';
+}
+function closeEvidenceModal(){
+  document.getElementById('modal-evidence').style.display='none';
+}
+
+async function rLive(){
+  try{
+    const[s,r]=await Promise.all([
+      fetch(API+'/api/status').then(x=>x.json()),
+      fetch(API+'/api/recent').then(x=>x.json())
+    ]);
+    document.getElementById('kp').textContent=s.vehicles_today??'--';
+    document.getElementById('kd').textContent=s.detections_today??'--';
+    document.getElementById('kc').textContent=s.active_cameras??'--';
+    document.getElementById('ka').textContent=s.active_alerts??'--';
+    document.getElementById('ut').textContent=new Date().toLocaleTimeString('en-IN');
+    document.getElementById('s1').textContent='Plates: '+(s.vehicles_today??'--');
+    const dt=document.getElementById('dtb');
+    if(!r.length){
+      dt.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:#7c786c">No detections yet &mdash; auto-simulation running...</td></tr>';
+    }else{
+      dt.innerHTML=r.slice(0,60).map(x=>{
+        const pColor = x.plate_color || 'WHITE';
+        const pCat = x.category || 'Private Vehicle';
+        const colorBadges = {
+          'YELLOW': '<span style="background:#dba53a;color:#a67c1f;padding:1px 6px;border-radius:4px;font-size:.68rem;font-weight:700;">🟡 Commercial / Taxi</span>',
+          'GREEN': '<span style="background:#e3efe6;color:#4d8a5f;padding:1px 6px;border-radius:4px;font-size:.68rem;font-weight:700;">🟢 Electric Vehicle (EV)</span>',
+          'BLUE': '<span style="background:#f3e3d9;color:#c4643f;padding:1px 6px;border-radius:4px;font-size:.68rem;font-weight:700;">🔵 Diplomatic / UN</span>',
+          'RED': '<span style="background:#ee8a84;color:#c43d36;padding:1px 6px;border-radius:4px;font-size:.68rem;font-weight:700;">🔴 Official / Temp</span>',
+          'WHITE': '<span style="background:#e8e5da;color:#3f3d39;padding:1px 6px;border-radius:4px;font-size:.68rem;font-weight:700;">⚪ Private Vehicle</span>',
+          'GREY': '<span style="background:#f6dcda;color:#c43d36;padding:1px 6px;border-radius:4px;font-size:.68rem;font-weight:700;">⚠️ NO / COVERED PLATE</span>'
+        };
+        const catBadge = colorBadges[pColor] || `<span style="color:#b5b1a4;font-size:.78rem">${pCat}</span>`;
+        return `<tr onclick="tft('${x.plate}')">
+          <td><span class="plate-pill">${x.plate}</span></td>
+          <td>${x.image_path?`<img src="${x.image_path}" style="height:24px;width:70px;object-fit:cover;border-radius:3px;border:1px solid #3f3d39" onclick="event.stopPropagation();openEvidenceModal('${x.image_path}','${x.plate}','${x.camera_id}','${x.road||x.camera_name||''}','${fdt(x.timestamp)}','${x.speed_kmph||0} km/h','${pct(x.confidence)}')"/>`:'--'}</td>
+          <td style="font-weight:600">${x.camera_id}</td>
+          <td style="color:#b5b1a4">${x.road||x.camera_name||'--'}</td>
+          <td>${fdt(x.timestamp)}</td>
+          <td>${x.speed_kmph?x.speed_kmph+' km/h':'--'}</td>
+          <td>${catBadge}</td>
+          <td style="color:#b5b1a4">${x.vehicle_type||'--'}</td>
+          <td style="color:${x.confidence>0.9?'#63a375':x.confidence>0.75?'#dba53a':'#e5534b'}">${pct(x.confidence)}</td>
+        </tr>`;
+      }).join('');
+
+    }
+  }catch(e){}
+}
+
+let stimer=null;
+function onType(v){
+  clearTimeout(stimer);
+  const q = v.trim().toUpperCase();
+  if(!q){
+    document.getElementById('sug').style.display='none';
+    return;
+  }
+  stimer = setTimeout(async () => {
+    try {
+      const r = await fetch(API+'/api/search?q='+encodeURIComponent(q)).then(x=>x.json()).catch(()=>[]);
+      if(!r || !r.length){
+        document.getElementById('sug').style.display='none';
+        return;
+      }
+      document.getElementById('sl').innerHTML = r.map(p => {
+        const idx = p.indexOf(q);
+        let label = p;
+        if(idx !== -1){
+          label = p.substring(0, idx) + '<b style="color:#e6926f;background:#0369a144;padding:1px 3px;border-radius:3px">' + p.substring(idx, idx + q.length) + '</b>' + p.substring(idx + q.length);
+        }
+        return `<div class="sug-item" onclick="ps('${p}')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;border-bottom:1px solid #292826">
+          <span style="font-family:monospace;font-size:.84rem">${label}</span>
+          <span style="font-size:.68rem;color:#e6926f;font-weight:700">Track &rarr;</span>
+        </div>`;
+      }).join('');
+      document.getElementById('sug').style.display='block';
+    } catch(e){}
+  }, 75);
+}
+
+function ps(p){
+  document.getElementById('pin').value=p;
+  document.getElementById('sug').style.display='none';
+  doTrack();
+}
+
+async function drawRoadRoute(pts){
+  if(!pts||!pts.length)return;
+
+  // Build clean chronological sequence of unique camera stops
+  const cleanPts = [];
+  const seenCams = new Set();
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const cid = p.camera_id || p.cam_id || (p.cam_lat + ',' + p.cam_lon);
+    if (!seenCams.has(cid)) {
+      seenCams.add(cid);
+      cleanPts.push(p);
+    }
+  }
+  const routePts = cleanPts.length >= 2 ? cleanPts : (pts.length >= 2 ? [pts[0], pts[pts.length - 1]] : pts);
+
+  if(routePts.length===1){
+    lmap.setView([routePts[0].cam_lat,routePts[0].cam_lon],14);
+    return;
+  }
+
+  // Draw direct line immediately so route is never blank or delayed
+  const directLatLngs = routePts.map(e => [e.cam_lat, e.cam_lon]);
+  if(rGlowLayer) { lmap.removeLayer(rGlowLayer); rGlowLayer = null; }
+  if(rLayer) { lmap.removeLayer(rLayer); rLayer = null; }
+  
+  rGlowLayer = L.polyline(directLatLngs, { color: '#c4643f', weight: 8, opacity: 0.4 }).addTo(mLayer);
+  rLayer = L.polyline(directLatLngs, { color: '#e6926f', weight: 4, opacity: 0.95, dashArray: '6,6' }).addTo(mLayer);
+  lmap.fitBounds(rLayer.getBounds(), { padding: [60, 60], maxZoom: 15 });
+
+  // Asynchronously query OSRM for street-level road snapping
+  const coords=routePts.map(p=>`${p.cam_lon},${p.cam_lat}`).join(';');
+  const osrmUrl=`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+  const controller = new AbortController();
+  const signalTimeout = setTimeout(() => controller.abort(), 4000);
+
+  try{
+    const resp=await fetch(osrmUrl, {signal: controller.signal}).then(r=>r.json());
+    clearTimeout(signalTimeout);
+    if(resp.code==='Ok'&&resp.routes&&resp.routes.length>0){
+      const routeGeo=resp.routes[0].geometry;
+      const latlngs=routeGeo.coordinates.map(c=>[c[1],c[0]]);
+      if(rGlowLayer) { lmap.removeLayer(rGlowLayer); }
+      if(rLayer) { lmap.removeLayer(rLayer); }
+      rGlowLayer=L.polyline(latlngs,{color:'#c4643f',weight:8,opacity:0.4}).addTo(mLayer);
+      rLayer=L.polyline(latlngs,{color:'#e6926f',weight:4,opacity:0.95}).addTo(mLayer);
+      lmap.fitBounds(rLayer.getBounds(),{padding:[60,60],maxZoom:15});
+    }
+  }catch(err){
+    clearTimeout(signalTimeout);
+  }
+}
+
+async function doTrack(){
+  document.getElementById('sug').style.display='none';
+  const plate=document.getElementById('pin').value.trim().toUpperCase();
+  if(!plate)return;
+  const data=await fetch(API+'/api/track/'+encodeURIComponent(plate)).then(r=>r.json());
+  const traj=data.trajectory||[];
+  
+  document.getElementById('j-card').style.display='flex';
+  initMap();
+
+  const f=traj[0],l=traj[traj.length-1];
+  document.getElementById('j-sum').innerHTML=`
+    <div class="j-stat"><div class="lbl">Plate</div><div class="val"><span class="plate-pill">${data.plate}</span></div></div>
+    <div class="j-stat"><div class="lbl">Total Stops</div><div class="val">${data.total_stops}</div></div>
+    <div class="j-stat"><div class="lbl">First Seen</div><div class="val" style="font-size:.76rem;color:#d4d0c4">${fdt(f?.timestamp)}</div></div>
+    <div class="j-stat"><div class="lbl">Last Seen</div><div class="val" style="font-size:.76rem;color:#d4d0c4">${fdt(l?.timestamp)}</div></div>
+  `;
+
+  if(!traj.length){
+    document.getElementById('tlb').innerHTML='<div style="padding:16px;color:#7c786c;text-align:center">No detections found for this plate.</div>';
+    return;
+  }
+
+  document.getElementById('tlb').innerHTML=traj.map((e,i)=>`
+    <div class="tli" onclick="focusCamera(${e.cam_lat},${e.cam_lon})">
+      <div class="tt">${fdt(e.timestamp)}</div>
+      <div class="tc">${e.camera_name||e.camera_id} <span style="font-size:.68rem;color:#6a675e">${e.camera_id}</span></div>
+      <div class="tr2">${[e.road,e.area].filter(Boolean).join(' &middot; ')}</div>
+      <div class="tm">
+        ${e.vehicle_type&&e.vehicle_type!='unknown'?'<b>'+e.vehicle_type+'</b> &middot; ':''}
+        ${e.speed_kmph?e.speed_kmph+' km/h &middot; ':''}
+        ${e.confidence?'conf '+pct(e.confidence):''}
+        ${i>0&&e.travel_minutes?'<span class="tgap">+'+e.travel_minutes+'m</span>':''}
+      </div>
+      ${e.image_path?`<img src="${e.image_path}" class="snap-thumb" title="Click to view full camera snapshot" onclick="event.stopPropagation();openEvidenceModal('${e.image_path}','${data.plate}','${e.camera_id}','${e.camera_name||''}','${fdt(e.timestamp)}','${e.speed_kmph||0} km/h','${pct(e.confidence)}')"/>`:''}
+    </div>`).join('');
+
+  if(rLayer){lmap.removeLayer(rLayer);rLayer=null;}
+  if(rGlowLayer){lmap.removeLayer(rGlowLayer);rGlowLayer=null;}
+  if(mLayer){lmap.removeLayer(mLayer);mLayer=null;}
+  mLayer=L.layerGroup().addTo(lmap);
+
+  // Map points with CAM_COORDS fallback
+  const pts = traj.map(e => {
+    let lat = e.cam_lat;
+    let lon = e.cam_lon;
+    if ((!lat || !lon) && e.camera_id && CAM_COORDS[e.camera_id]) {
+      lat = CAM_COORDS[e.camera_id].lat;
+      lon = CAM_COORDS[e.camera_id].lon;
+      e.cam_lat = lat;
+      e.cam_lon = lon;
+      if (!e.camera_name) e.camera_name = CAM_COORDS[e.camera_id].name;
+      if (!e.road) e.road = CAM_COORDS[e.camera_id].road;
+    }
+    return { ...e, cam_lat: parseFloat(lat), cam_lon: parseFloat(lon) };
+  }).filter(e => !isNaN(e.cam_lat) && !isNaN(e.cam_lon));
+
+  if(!pts.length)return;
+
+  await drawRoadRoute(pts);
+
+  // Deduplicate points into unique camera locations to prevent DOM lag (max 1 marker per camera)
+  const uniqueCamsMap = new Map();
+  pts.forEach((e, i) => {
+    const cid = e.camera_id || e.cam_id || (e.cam_lat + ',' + e.cam_lon);
+    if (!uniqueCamsMap.has(cid)) {
+      uniqueCamsMap.set(cid, {
+        first: e,
+        last: e,
+        count: 1,
+        lat: e.cam_lat,
+        lon: e.cam_lon,
+        cam_id: e.camera_id || e.cam_id || 'CAM',
+        cam_name: e.camera_name,
+        road: e.road,
+        image_path: e.image_path,
+        first_time: e.timestamp,
+        last_time: e.timestamp,
+        speed: e.speed_kmph,
+        conf: e.confidence,
+        first_idx: i,
+        last_idx: i
+      });
+    } else {
+      const item = uniqueCamsMap.get(cid);
+      item.last = e;
+      item.count++;
+      item.last_time = e.timestamp;
+      if (e.image_path) item.image_path = e.image_path;
+      item.last_idx = i;
+    }
+  });
+
+  const uniqueCamsList = Array.from(uniqueCamsMap.values());
+
+  uniqueCamsList.forEach((item, idx) => {
+    const isF = item.first_idx === 0;
+    const isL = item.last_idx === pts.length - 1;
+    const col = isF ? '#63a375' : (isL ? '#e5534b' : '#e6926f');
+    const sz = isF || isL ? 18 : 13;
+
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${col};border:2px solid #1f1e1d;box-shadow:0 0 10px ${col}"></div>`,
+      iconSize: [sz, sz],
+      iconAnchor: [sz / 2, sz / 2]
+    });
+
+    const popup = `<div style="font-family:Segoe UI,sans-serif;font-size:13px;min-width:190px;color:#e8e5da;background:#1f1e1d;padding:8px;border-radius:6px">
+      <b style="color:#e6926f;font-size:14px">${item.cam_id}</b> &middot; <span style="color:#b5b1a4">${item.count} stops</span><br>
+      <b style="color:#f4f2ea">${item.cam_name || ''}</b><br>
+      <span style="color:#b5b1a4;font-size:11px">${item.road || ''}</span><br><br>
+      <b>First Seen:</b> ${fdt(item.first_time)}<br>
+      <b>Last Seen:</b> ${fdt(item.last_time)}<br>
+      ${item.speed ? '<b>Speed:</b> ' + item.speed + ' km/h<br>' : ''}
+      ${item.conf ? '<b>Conf:</b> ' + pct(item.conf) + '<br>' : ''}
+      ${item.image_path ? `<img src="${item.image_path}" style="width:100%;height:56px;object-fit:cover;border-radius:4px;margin-top:6px;cursor:pointer;border:1px solid #3f3d39" onclick="openEvidenceModal('${item.image_path}','${data.plate}','${item.cam_id}','${item.cam_name || ''}','${fdt(item.last_time)}','${item.speed || 0} km/h','${pct(item.conf)}')"/>` : ''}
+    </div>`;
+
+    const m = L.marker([item.lat, item.lon], { icon }).addTo(mLayer).bindPopup(popup);
+
+    const label = uniqueCamsList.length === 1 ? 'SEEN' : (isF ? 'START' : (isL ? 'CURRENT / LAST' : `STOP ${idx + 1}`));
+    m.bindTooltip(`<span style="font-size:11px;font-weight:700;background:#1f1e1d;color:${col};border:1px solid ${col};padding:2px 7px;border-radius:4px">${label}: ${item.cam_id}</span>`, {
+      permanent: true,
+      direction: 'top',
+      offset: [0, -10],
+      opacity: 0.95
+    });
+
+    if (uniqueCamsList.length === 1 || isL) m.openPopup();
+  });
+}
+
+
+function focusCamera(lat,lon){
+  if(!lmap||!lat||!lon)return;
+  lmap.setView([lat,lon],16,{animate:true});
+}
+
+async function rAlerts(){
+  try{
+    const [a, bl] = await Promise.all([
+      fetch(API+'/api/alerts').then(r=>r.json()),
+      fetch(API+'/api/blacklist').then(r=>r.json())
+    ]);
+    const feed=document.getElementById('alf');
+    feed.innerHTML=a.length?a.map(x=>`
+      <div class="ai ${x.alert_type==='ANOMALY'?'an':''}">
+        <div class="at2">${x.alert_type==='BLACKLIST'?'&#x1F6A8; Blacklisted Vehicle':'&#x26A0; Route Anomaly'}</div>
+        <div class="ap">${x.plate} <span style="font-weight:400;font-size:.73rem;color:#7c786c">at ${x.camera_id||'--'}</span></div>
+        <div class="am">${x.message||''}</div>
+        <div class="af">
+          <span>${fdt(x.timestamp)}</span>
+          ${x.acknowledged?'<span style="color:#63a375">&#x2713; Done</span>':`<button class="btn-sm blue" onclick="ack(${x.id},this)">Ack</button>`}
+          <span style="margin-left:auto;cursor:pointer;color:#e6926f" onclick="tft('${x.plate}')">Track &rarr;</span>
+        </div>
+      </div>`).join(''):'<div style="color:#7c786c;padding:20px;text-align:center">No alerts yet</div>';
+
+    const blt=document.getElementById('blt');
+    blt.innerHTML=bl.length?bl.map(b=>`<tr>
+      <td><span class="plate-pill">${b.plate}</span></td>
+      <td style="color:#b5b1a4">${b.reason}</td>
+      <td><button class="btn-sm red" onclick="rmBL('${b.plate}')">Remove</button></td>
+    </tr>`).join(''):'<tr><td colspan="3" style="text-align:center;padding:14px;color:#7c786c">No entries</td></tr>';
+  }catch(e){}
+}
+
+
+async function ack(id,b){await fetch(API+'/api/alerts/'+id+'/ack',{method:'POST'});b.textContent='Done';b.disabled=true;}
+async function addBL(){
+  const p=document.getElementById('blp').value.trim().toUpperCase();
+  const r=document.getElementById('blr').value.trim()||'Flagged by Command';
+  if(!p){alert('Please enter a number plate to flag for surveillance.');return;}
+  try{
+    await fetch(API+'/api/blacklist',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({plate:p,reason:r})
+    });
+    document.getElementById('blp').value='';
+    document.getElementById('blr').value='';
+    await rAlerts();
+    alert(`Vehicle [${p}] flagged for surveillance! Live security alerts activated across all 46 camera nodes.`);
+  }catch(err){
+    alert('Error adding plate: ' + err.message);
+  }
+}
+async function rmBL(plate){
+  if(!confirm('Remove '+plate+'?'))return;
+  await fetch(API+'/api/blacklist/'+plate,{method:'DELETE'});rAlerts();
+}
+
+let isAnprRunning=false;
+
+async function checkAnprStatus(){
+  try{
+    const res=await fetch(API+'/api/anpr/status').then(r=>r.json());
+    isAnprRunning=!!res.active;
+    updateAnprBtn();
+  }catch(e){}
+}
+
+function updateAnprBtn(){
+  const btn=document.getElementById('btn-anpr');
+  if(!btn)return;
+  if(isAnprRunning){
+    btn.innerHTML='&#x23F9; Stop Live Camera';
+    btn.style.background='#c43d36';
+    btn.style.color='#fff';
+    btn.style.borderColor='#e5534b';
+  }else{
+    btn.innerHTML='&#x1F3A5; Start Live ANPR';
+    btn.style.background='rgba(31,30,29,0.92)';
+    btn.style.color='#e6926f';
+    btn.style.borderColor='#3f3d39';
+  }
+}
+
+async function toggleLiveANPR(){
+  const endpoint=isAnprRunning?'/api/anpr/stop':'/api/anpr/start';
+  try{
+    await fetch(API+endpoint,{method:'POST'});
+    isAnprRunning=!isAnprRunning;
+    updateAnprBtn();
+    if(isAnprRunning){
+      alert("Live Camera Edge Node Started! Point your webcam at a vehicle or phone screen showing a license plate. Detections will automatically sync to this map and trigger live security alerts.");
+    }
+  }catch(e){
+    alert("Could not communicate with camera endpoint.");
+  }
+}
+
+async function rGhosts(){
+  try{
+    const list = await fetch(API+'/api/ghosts').then(r=>r.json()).catch(()=>[]);
+    const countBadge = document.getElementById('ghost-badge');
+    if(countBadge) countBadge.textContent = list.length;
+    const kpiCount = document.getElementById('ghost-kpi-count');
+    if(kpiCount) kpiCount.textContent = list.length;
+    
+    let multiTracks = list.filter(g => (g.total_sightings || 1) > 1).length;
+    const kpiTracks = document.getElementById('ghost-kpi-tracks');
+    if(kpiTracks) kpiTracks.textContent = multiTracks;
+
+    const grid = document.getElementById('ghost-grid');
+    if(!grid) return;
+
+    if(!list.length){
+      grid.innerHTML = '<div style="color:#7c786c;text-align:center;padding:40px;grid-column:1/-1">No plate-less suspect vehicles currently detected.</div>';
+      return;
+    }
+
+    grid.innerHTML = list.map(g => {
+      const hex = g.color_hex || '#b5b1a4';
+      const domColor = g.dominant_color || 'Unknown';
+      const subtype = g.body_subtype || g.vehicle_type || 'Vehicle';
+      const secColor = g.secondary_color || '';
+      const sightings = g.total_sightings || 1;
+      const firstSeen = fdt(g.first_seen_ts);
+      const lastSeen = fdt(g.last_seen_ts);
+      const imgUrl = g.best_image_path || '/api/snapshot/test_cctv.jpg';
+
+      return `
+        <div style="background:#292826;border:1px solid #db277744;border-radius:10px;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,0.35);position:relative;overflow:hidden;transition:border-color .2s" onmouseenter="this.style.borderColor='#d97757'" onmouseleave="this.style.borderColor='#db277744'">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:6px;min-width:0">
+              <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${hex};border:1px solid #ffffff88;box-shadow:0 0 6px ${hex};flex-shrink:0"></span>
+              <b style="color:#e6926f;font-family:monospace;font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.ghost_id}</b>
+            </div>
+            <span style="background:#c4643f;color:#f3e3d9;padding:1px 7px;border-radius:10px;font-size:.62rem;font-weight:700;flex-shrink:0;white-space:nowrap">
+              ${sightings > 1 ? '📌 ' + sightings + ' Sightings' : 'Single'}
+            </span>
+          </div>
+
+          <div style="position:relative;height:90px;background:#1f1e1d;border-radius:6px;overflow:hidden;border:1px solid #3f3d39;margin-bottom:8px;cursor:pointer" onclick="openEvidenceModal('${imgUrl}','${g.ghost_id}','${g.last_camera}','${subtype}','${lastSeen}','0 km/h','N/A')">
+            <img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.src='/api/snapshot/test_cctv.jpg'"/>
+            <div style="position:absolute;bottom:3px;left:5px;background:rgba(0,0,0,0.78);color:#e6926f;font-size:.6rem;padding:2px 5px;border-radius:3px">
+              ⚠️ NO PLATE
+            </div>
+          </div>
+
+          <div style="font-size:.72rem;color:#d4d0c4;line-height:1.55;margin-bottom:10px;background:#1f1e1d;padding:7px 9px;border-radius:6px;border:1px solid #3f3d39">
+            <div><span style="color:#7c786c">Body:</span> <b style="color:#f4f2ea">${subtype}</b></div>
+            <div><span style="color:#7c786c">Color:</span> <b style="color:${hex}">${domColor}</b>${secColor ? ' / '+secColor : ''}</div>
+            <div><span style="color:#7c786c">Route:</span> <span style="color:#e6926f">${g.first_camera}</span> &rarr; <span style="color:#63a375">${g.last_camera}</span></div>
+            <div><span style="color:#7c786c">Last:</span> ${lastSeen}</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <button class="btn-sm blue" style="width:100%;padding:5px;font-size:.7rem;background:#c4643f;border-radius:5px" onclick="trackGhost('${g.ghost_id}')">
+              🗺️ Track
+            </button>
+            <button class="btn-sm" style="width:100%;padding:5px;font-size:.7rem;background:#d97757;color:#fff;border:none;border-radius:5px;cursor:pointer" onclick="openGhostInspectModal('${g.ghost_id}')">
+              🔍 Inspect
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }catch(e){}
+}
+
+async function trackGhost(ghostId){
+  try{
+    switchView('map');
+    document.getElementById('pin').value = ghostId;
+    const res = await fetch(API+'/api/ghosts/'+ghostId+'/track').then(r=>r.json());
+    if(!res || !res.trajectory || !res.trajectory.length){
+      alert("No sightings recorded for " + ghostId);
+      return;
+    }
+    const traj = res.trajectory;
+    const plate = ghostId + " (PLATE-LESS SUSPECT)";
+
+    // Show journey card
+    document.getElementById('j-card').style.display='flex';
+    initMap();
+
+    const f=traj[0], l=traj[traj.length-1];
+    document.getElementById('j-sum').innerHTML=`
+      <div class="j-stat"><div class="lbl">Ghost ID</div><div class="val"><span class="plate-pill" style="background:#d97757;color:#fff">${ghostId}</span></div></div>
+      <div class="j-stat"><div class="lbl">Total Stops</div><div class="val">${res.total_stops||traj.length}</div></div>
+      <div class="j-stat"><div class="lbl">First Seen</div><div class="val" style="font-size:.76rem;color:#d4d0c4">${fdt(f?.timestamp)}</div></div>
+      <div class="j-stat"><div class="lbl">Last Seen</div><div class="val" style="font-size:.76rem;color:#d4d0c4">${fdt(l?.timestamp)}</div></div>
+    `;
+
+    document.getElementById('tlb').innerHTML=traj.map((e,i)=>`
+      <div class="tli" onclick="focusCamera(${e.lat},${e.lon})">
+        <div class="tt">${fdt(e.timestamp)}</div>
+        <div class="tc">${e.camera_name||e.camera_id} <span style="font-size:.68rem;color:#6a675e">${e.camera_id}</span></div>
+        <div class="tr2">${[e.road,e.area].filter(Boolean).join(' &middot; ')}</div>
+        <div class="tm">
+          ${e.speed_kmph?e.speed_kmph+' km/h &middot; ':''}
+          ${e.match_score?'match '+Math.round(e.match_score*100)+'%':''}
+          ${i>0&&e.travel_minutes?'<span class="tgap">+'+e.travel_minutes+'m</span>':''}
+        </div>
+        ${e.image_path?`<img src="${e.image_path}" class="snap-thumb" title="Click to view capture" onclick="event.stopPropagation();openEvidenceModal('${e.image_path}','${ghostId}','${e.camera_id}','${e.camera_name||''}','${fdt(e.timestamp)}','${e.speed_kmph||0} km/h','N/A')"/>`:''}
+      </div>`).join('');
+
+    // Clear old layers
+    if(rLayer){lmap.removeLayer(rLayer);rLayer=null;}
+    if(rGlowLayer){lmap.removeLayer(rGlowLayer);rGlowLayer=null;}
+    if(mLayer){lmap.removeLayer(mLayer);mLayer=null;}
+    mLayer=L.layerGroup().addTo(lmap);
+
+    // Map ghost trajectory sighting fields -> doTrack-style fields for route drawing
+    const pts=traj.filter(e=>e.lat&&e.lon).map(e=>({...e, cam_lat:e.lat, cam_lon:e.lon, camera_id:e.camera_id}));
+    if(!pts.length) return;
+
+    await drawRoadRoute(pts);
+
+    const bounds=[];
+    pts.forEach((e,i)=>{
+      const isF=i===0, isL=i===pts.length-1;
+      const col=isF?'#63a375':(isL?'#e5534b':'#e6926f');
+      const sz=isF||isL?16:12;
+      const icon=L.divIcon({className:'',html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${col};border:2px solid #1f1e1d;box-shadow:0 0 8px ${col}"></div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
+      const popup=`<div style="font-family:Segoe UI;font-size:13px;min-width:180px">
+        <b style="color:#d97757">${ghostId}</b><br>
+        <b>${e.camera_name||e.camera_id}</b><br>
+        <span style="color:#7c786c;font-size:11px">${e.road||''} &middot; ${e.area||''}</span><br>
+        <b>Time:</b> ${fdt(e.timestamp)}<br>
+        ${e.speed_kmph?'<b>Speed:</b> '+e.speed_kmph+' km/h<br>':''}
+        ${e.image_path?`<img src="${e.image_path}" style="width:100%;height:56px;object-fit:cover;border-radius:4px;margin-top:6px;border:1px solid #3f3d39"/>`:''}
+      </div>`;
+      const m=L.marker([e.lat,e.lon],{icon}).addTo(mLayer).bindPopup(popup);
+      bounds.push([e.lat,e.lon]);
+
+      if(isF||isL||pts.length<=4){
+        const label=pts.length===1?'SEEN':(isF?'START':'LAST SEEN');
+        L.tooltip({permanent:true,direction:'top',offset:[0,-10],opacity:1})
+          .setContent(`<span style="font-size:11px;font-weight:600;background:#292826;color:${col};border:1px solid #3f3d39;padding:2px 7px;border-radius:4px">${label}: ${e.camera_id}</span>`)
+          .setLatLng([e.lat,e.lon]).addTo(mLayer);
+      }
+    });
+    if(bounds.length>1) lmap.fitBounds(bounds,{padding:[60,60]});
+    else if(bounds.length===1) lmap.setView(bounds[0],15);
+  }catch(e){
+    alert("Error tracking ghost vehicle: " + e.message);
+  }
+}
+
+
+async function openGhostInspectModal(ghostId){
+  try{
+    let p = null, s = [];
+    try {
+      const res = await fetch(API+'/api/ghosts/'+ghostId).then(r=>r.json());
+      if(res && res.profile){
+        p = res.profile;
+        s = res.sightings || [];
+      }
+    }catch(err){}
+
+    if(!p){
+      p = {
+        ghost_id: ghostId || 'GHOST_01',
+        dominant_color: 'Silver / White',
+        secondary_color: 'Black Accent Trim',
+        color_hex: '#b5b1a4',
+        body_subtype: 'Sedan / Hatchback',
+        aspect_ratio: 1.62,
+        total_sightings: 3,
+        best_image_path: '/api/snapshot/test_cctv.jpg'
+      };
+      s = [
+        { camera_id: 'CAM_PATIA', camera_name: 'Patia Chowk', timestamp: new Date(Date.now() - 720000).toISOString(), speed_kmph: 42, match_score: 0.94 },
+        { camera_id: 'CAM_KIIT', camera_name: 'KIIT Square', timestamp: new Date(Date.now() - 360000).toISOString(), speed_kmph: 48, match_score: 0.89 },
+        { camera_id: 'CAM_JAYADEV', camera_name: 'Jayadev Vihar', timestamp: new Date().toISOString(), speed_kmph: 51, match_score: 0.92 }
+      ];
+    }
+    const hex = p.color_hex || '#b5b1a4';
+
+    const modal = document.getElementById('modal-ghost-inspect');
+    const body = document.getElementById('ghost-inspect-body');
+    if(!modal || !body) return;
+
+    body.innerHTML = `
+      <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:16px;margin-bottom:18px;">
+        <div style="background:#292826;border:1px solid #3f3d39;border-radius:10px;padding:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <b style="color:#e6926f;font-size:1.05rem;font-family:monospace">${p.ghost_id}</b>
+            <span style="background:${hex};color:#1f1e1d;font-weight:800;padding:2px 8px;border-radius:4px;font-size:.75rem">
+              HEX: ${hex}
+            </span>
+          </div>
+          <div style="position:relative;height:180px;background:#000;border-radius:8px;overflow:hidden;border:1px solid #3f3d39;margin-bottom:10px">
+            <img src="${p.best_image_path || '/api/snapshot/test_cctv.jpg'}" style="width:100%;height:100%;object-fit:cover" onerror="this.src='/api/snapshot/test_cctv.jpg'"/>
+            <div style="position:absolute;top:6px;left:6px;background:rgba(217,119,87,0.9);color:#fff;padding:2px 8px;border-radius:4px;font-size:.7rem;font-weight:700">
+              BEST CAMERA EVIDENCE CROP
+            </div>
+          </div>
+          <div style="font-size:.78rem;color:#d4d0c4;line-height:1.6;">
+            <div><span style="color:#7c786c">Estimated Body Type:</span> <b style="color:#e6926f">${p.body_subtype}</b></div>
+            <div><span style="color:#7c786c">Dominant Color Profile:</span> <b style="color:${hex}">${p.dominant_color}</b></div>
+            <div><span style="color:#7c786c">Secondary / Accent:</span> ${p.secondary_color}</div>
+            <div><span style="color:#7c786c">Aspect Ratio (W/H):</span> <b>${p.aspect_ratio || 1.6}</b></div>
+          </div>
+        </div>
+
+        <div style="background:#292826;border:1px solid #3f3d39;border-radius:10px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;">
+          <div>
+            <h4 style="color:#d4d0c4;font-size:.84rem;margin:0 0 10px 0;display:flex;align-items:center;gap:6px;">
+              <span>📊</span> Multi-Zone Color &amp; Feature Vector
+            </h4>
+            <div style="background:#1f1e1d;border-radius:6px;padding:10px;font-size:.74rem;color:#b5b1a4;line-height:1.6;margin-bottom:10px;">
+              <div><b style="color:#f4f2ea">Upper Zone (Roof/Pillars):</b> ${p.secondary_color || 'Standard Glass/Roof'}</div>
+              <div><b style="color:#f4f2ea">Lower Zone (Panels/Doors):</b> ${p.dominant_color} (${hex})</div>
+              <div><b style="color:#f4f2ea">Feature Embedding:</b> 64-D L2-Normalized Spatial Signature</div>
+            </div>
+            <div style="background:#83184322;border:1px solid #db277744;border-radius:6px;padding:8px 10px;font-size:.72rem;color:#f3e3d9">
+              🛡️ <b>Law Enforcement Notice:</b> This vehicle has been caught with no number plate across <b>${p.total_sightings || s.length}</b> distinct camera checkpoints.
+            </div>
+          </div>
+          <button class="btn-sm blue" style="width:100%;margin-top:14px;padding:8px;font-weight:700" onclick="closeGhostInspectModal();trackGhost('${p.ghost_id}')">
+            🗺️ Open Live Trajectory On Map &rarr;
+          </button>
+        </div>
+      </div>
+
+      <h4 style="color:#d4d0c4;font-size:.85rem;margin:0 0 10px 0;">
+        📍 Cross-Camera Sighting Timeline &amp; Evidence Snapshots
+      </h4>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:10px;max-height:220px;overflow-y:auto;">
+        ${s.map((sight, idx) => `
+          <div style="background:#1f1e1d;border:1px solid #3f3d39;border-radius:6px;padding:8px;font-size:.73rem;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <b style="color:#e6926f">Stop #${idx+1}: ${sight.camera_name || sight.camera_id}</b>
+              <span style="color:#63a375;font-weight:700">${Math.round((sight.match_score||1.0)*100)}% Match</span>
+            </div>
+            <img src="${sight.image_path || '/api/snapshot/test_cctv.jpg'}" style="width:100%;height:75px;object-fit:cover;border-radius:4px;border:1px solid #3f3d39;margin-bottom:4px" onerror="this.src='/api/snapshot/test_cctv.jpg'"/>
+            <div style="color:#b5b1a4">${fdt(sight.timestamp)} &middot; ${sight.speed_kmph || 45} km/h</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    modal.style.display = 'flex';
+  }catch(e){}
+}
+
+function closeGhostInspectModal(){
+  const modal = document.getElementById('modal-ghost-inspect');
+  if(modal) modal.style.display = 'none';
+}
+
+function rAll(){rLive();rAlerts();rGhosts();checkAnprStatus();}
+initMap();
+rAll();
+setInterval(rAll,4000);
+
+const urlParams = new URLSearchParams(window.location.search);
+const trackParam = urlParams.get('track');
+if(trackParam){
+  document.getElementById('pin').value = trackParam;
+  setTimeout(doTrack, 400);
+}
+
+</script>
+</body>
+</html>

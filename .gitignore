@@ -1,0 +1,46 @@
+# Dependencies and builds
+node_modules/
+dist/
+.vite/
+*.log
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+prototype/firebase_config.json
+frontend/src/config/teamMembers.local.js
+frontend/.firebaserc
+
+# AI tooling
+.claude/
+CLAUDE.md
+
+# Model weights (ultralytics downloads yolov8n/yolov8s by name on first use)
+*.pt
+*.onnx
+*.engine
+*.bin
+*.pkl
+
+# Runtime data
+*.db*
+*.sqlite*
+prototype/data/
+city flow model/data/
+prototype/scratch_*.jpg
+prototype/test_*.jpg
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Linter caches
+.ruff_cache/

@@ -1,0 +1,49 @@
+# Python bytecode & cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Databases & runtime data
+data/*.db
+data/*.sqlite3
+data/snapshots/*.jpg
+data/snapshots/*.png
+data/temp_videos/*
+!data/temp_videos/.gitkeep
+!data/snapshots/.gitkeep
+
+# Large YOLO model weights
+*.pt
+*.onnx
+*.engine
+
+# Test & scratch images
+scratch_*.jpg
+scratch_*.png
+test_*.jpg
+test_*.png
+write_dash.py
+
+# Environment & Virtualenvs
+.env
+.venv/
+venv/
+env/
+ENV/
+
+# Temporary files & logs
+*.log
+scratch/
+.tmp/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Video uploads & binary media
+data/snapshots/*.mp4
+data/snapshots/*.avi
+data/temp_videos/*.mp4

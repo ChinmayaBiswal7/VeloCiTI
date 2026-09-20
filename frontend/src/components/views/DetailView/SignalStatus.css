@@ -1,0 +1,15 @@
+.signal-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; }
+.panel-title { font-size:0.72rem; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+.signal-body { display:flex; align-items:center; gap:16px; }
+.signal-pole { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.signal-housing { background:#1f1e1d; border:1px solid var(--border); border-radius:10px; padding:8px 7px; display:flex; flex-direction:column; gap:6px; }
+.signal-light { width:22px; height:22px; border-radius:50%; background:#292826; border:2px solid rgba(255,255,255,0.06); transition:all 0.3s ease; }
+.signal-light.red-on    { background:var(--red);   box-shadow: none; }
+.signal-light.amber-on  { background:var(--amber); box-shadow: none; }
+.signal-light.green-on  { background:var(--green); box-shadow: none; }
+.signal-post { width:3px; height:18px; background:var(--surface2); border-radius:0 0 3px 3px; }
+.signal-meta { flex:1; }
+.signal-phase { font-size:0.68rem; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px; }
+.signal-countdown { font-size:2rem; font-weight:700; color:var(--text); line-height:1; font-variant-numeric:tabular-nums; margin-bottom:8px; }
+.signal-bar { height:3px; background:var(--surface2); border-radius:99px; overflow:hidden; }
+.signal-bar-fill { height:100%; background:var(--blue); border-radius:99px; transition:width 1s linear; }

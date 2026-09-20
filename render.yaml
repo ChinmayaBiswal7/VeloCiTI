@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: velociti
+    runtime: docker
+    plan: free
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: PYTHONUNBUFFERED
+        value: "1"

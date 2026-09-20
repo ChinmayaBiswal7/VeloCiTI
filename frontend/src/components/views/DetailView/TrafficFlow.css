@@ -1,0 +1,14 @@
+.flow-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.flow-compass { position: relative; width: 170px; height: 170px; margin: 10px auto; }
+.flow-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; background: var(--bg); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--blue); font-size: 0.9rem; }
+.flow-arm { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.flow-arm.north { top: 0; left: 50%; transform: translateX(-50%); }
+.flow-arm.south { bottom: 0; left: 50%; transform: translateX(-50%); }
+.flow-arm.east  { right: 0; top: 50%; transform: translateY(-50%); align-items: flex-end; }
+.flow-arm.west  { left: 0; top: 50%; transform: translateY(-50%); align-items: flex-start; }
+.flow-dir { font-size: 0.65rem; font-weight: 600; color: var(--text3); }
+.flow-val { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+.flow-light { width: 8px; height: 8px; border-radius: 50%; margin-top: 1px; }
+.flow-light.green  { background: var(--green); box-shadow: none; }
+.flow-light.yellow { background: var(--amber); box-shadow: none; }
+.flow-light.red    { background: var(--red);   box-shadow: none;   }

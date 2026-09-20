@@ -1,0 +1,101 @@
+{
+    "intersections": [
+        {
+            "id": "J1",
+            "point": {"x": 0, "y": 0},
+            "width": 10,
+            "roads": ["R1_in", "R1_out"],
+            "roadLinks": [],
+            "trafficLight": {
+                "roadLinkIndices": [],
+                "lightphases": [{"time": 30, "availableRoadLinks": []}]
+            },
+            "virtual": true
+        },
+        {
+            "id": "J2",
+            "point": {"x": 200, "y": 0},
+            "width": 10,
+            "roads": ["R1_out", "R2_out"],
+            "roadLinks": [
+                {
+                    "type": "go_straight",
+                    "startRoad": "R1_out",
+                    "endRoad": "R2_out",
+                    "direction": 0,
+                    "laneLinks": [{"startLaneIndex": 0, "endLaneIndex": 0, "points": []}]
+                }
+            ],
+            "trafficLight": {
+                "roadLinkIndices": [0],
+                "lightphases": [
+                    {"time": 30, "availableRoadLinks": [0]},
+                    {"time": 30, "availableRoadLinks": []}
+                ]
+            },
+            "virtual": false
+        },
+        {
+            "id": "J3",
+            "point": {"x": 400, "y": 0},
+            "width": 10,
+            "roads": ["R2_out", "R2_in"],
+            "roadLinks": [],
+            "trafficLight": {
+                "roadLinkIndices": [],
+                "lightphases": [{"time": 30, "availableRoadLinks": []}]
+            },
+            "virtual": true
+        }
+    ],
+    "roads": [
+        {
+            "id": "R1_out",
+            "startIntersection": "J1",
+            "endIntersection": "J2",
+            "lanes": [
+                {"width": 4, "maxSpeed": 16.67}
+            ],
+            "points": [
+                {"x": 0, "y": 0},
+                {"x": 200, "y": 0}
+            ]
+        },
+        {
+            "id": "R1_in",
+            "startIntersection": "J2",
+            "endIntersection": "J1",
+            "lanes": [
+                {"width": 4, "maxSpeed": 16.67}
+            ],
+            "points": [
+                {"x": 200, "y": 0},
+                {"x": 0, "y": 0}
+            ]
+        },
+        {
+            "id": "R2_out",
+            "startIntersection": "J2",
+            "endIntersection": "J3",
+            "lanes": [
+                {"width": 4, "maxSpeed": 16.67}
+            ],
+            "points": [
+                {"x": 200, "y": 0},
+                {"x": 400, "y": 0}
+            ]
+        },
+        {
+            "id": "R2_in",
+            "startIntersection": "J3",
+            "endIntersection": "J2",
+            "lanes": [
+                {"width": 4, "maxSpeed": 16.67}
+            ],
+            "points": [
+                {"x": 400, "y": 0},
+                {"x": 200, "y": 0}
+            ]
+        }
+    ]
+}
