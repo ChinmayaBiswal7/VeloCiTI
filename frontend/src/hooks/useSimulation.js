@@ -2,16 +2,18 @@ import { useState, useEffect, useCallback } from "react";
 import { initIntersections } from "../data/intersections";
 
 function runAI(intersections) {
+  const now = Date.now();
   return intersections.map((int, idx) => {
     // Generate organic, fluctuating live traffic per lane
-    // Real city traffic mostly flows with green/yellow and occasional peak red choke points
+    // Mostly smooth traffic with values oscillating in healthy 25% - 55% ranges
     const updatedLanes = int.lanes.map((lane, lIdx) => {
       if (lane.manualActive) return lane;
-      // Lane vehicle count varies dynamically with some temporal wave
-      const base = 25 + ((idx * 7 + lIdx * 11 + Math.floor(Date.now() / 3000)) % 45);
-      const jitter = Math.floor(Math.random() * 26) - 10;
-      const vehicleCount = Math.max(5, Math.min(110, base + jitter));
-      const averageSpeed = Math.max(15, Math.min(60, Math.round(55 - (vehicleCount * 0.35) + (Math.random() * 8))));
+      // Realistic lane distribution
+      const wave = Math.sin((now / 4000) + (idx * 0.7) + (lIdx * 1.2));
+      const base = 18 + Math.floor(((idx * 13 + lIdx * 7) % 22));
+      const jitter = Math.floor(wave * 12);
+      const vehicleCount = Math.max(4, Math.min(55, base + jitter));
+      const averageSpeed = Math.max(28, Math.min(58, Math.round(52 - (vehicleCount * 0.38))));
       return { ...lane, vehicleCount, averageSpeed };
     });
 
@@ -23,14 +25,11 @@ function runAI(intersections) {
       finalLanes = updatedLanes.map(lane => {
         if (lane.manualActive) return lane;
         let light = "green";
-        if (lane.vehicleCount > avgVC * 1.35) {
-          // Only high load triggers red
+        if (lane.vehicleCount > avgVC * 1.45) {
           light = "red";
-        } else if (lane.vehicleCount > avgVC * 0.95 || lane.vehicleCount === maxVC) {
-          // Moderate load triggers yellow/phasing
+        } else if (lane.vehicleCount > avgVC * 1.05 || lane.vehicleCount === maxVC) {
           light = "yellow";
         } else {
-          // Normal flow stays green
           light = "green";
         }
         return { ...lane, light };
@@ -39,10 +38,23 @@ function runAI(intersections) {
 
     const totalVehicles = finalLanes.reduce((s, l) => s + l.vehicleCount, 0);
     const avgSpeed = Math.round(finalLanes.reduce((s, l) => s + l.averageSpeed, 0) / finalLanes.length);
-    // Realistic congestion percentage (mostly 20% - 65%, rare spikes to 75%+)
-    const congestionPct = Math.min(95, Math.max(12, Math.round((totalVehicles / (90 * 4)) * 100)));
-    // Distribution: mostly low (green) & medium (yellow), rarely critical (red)
-    const status = congestionPct > 72 ? "critical" : congestionPct > 40 ? "medium" : "low";
+    
+    // User requirement: almost all nodes around 35% - 60% (mostly green and yellow), only few exceed it
+    const dynamicOffset = ((idx * 17 + Math.floor(now / 3500)) % 100);
+    let congestionPct;
+    if (dynamicOffset > 93) {
+      // Rare critical node (only ~6-7 nodes)
+      congestionPct = 74 + (dynamicOffset % 14); // 74% - 87%
+    } else if (dynamicOffset > 60) {
+      // Moderate yellow nodes (approx 30% of nodes: 50% - 64%)
+      congestionPct = 50 + (dynamicOffset % 15);
+    } else {
+      // Majority green smooth flow nodes (approx 60% of nodes: 28% - 48%)
+      congestionPct = 28 + (dynamicOffset % 21);
+    }
+
+    // Status: mostly low (green) & medium (yellow), only rare critical (red)
+    const status = congestionPct >= 72 ? "critical" : congestionPct >= 50 ? "medium" : "low";
 
     return { ...int, lanes: finalLanes, vehicleCount: totalVehicles, averageSpeed: avgSpeed, congestionPct, status };
   });
