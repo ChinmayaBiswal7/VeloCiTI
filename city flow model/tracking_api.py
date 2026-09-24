@@ -404,16 +404,37 @@ def register_tracking_routes(app):
                                 "device": ai_data.get("device", "cuda")
                             })
                             print(f"[AI Backend] Real plate detected on Colab GPU: {p_plate} ({conf})")
-                        else:
-                            print(f"[AI Backend] No plate detected on vehicle on Colab GPU -> triggering Unplated Forensic Profiler")
-                            plates_found = []
+                        # Extract annotated image from Colab if provided in base64
+                        annotated_b64 = ai_data.get("image_data")
+                        if annotated_b64 and annotated_b64.startswith("data:image/jpeg;base64,"):
+                            try:
+                                import base64
+                                b64_bytes = base64.b64decode(annotated_b64.split(",", 1)[1])
+                                with open(snap_path, "wb") as f_snap:
+                                    f_snap.write(b64_bytes)
+                                frame = cv2.imdecode(np.frombuffer(b64_bytes, np.uint8), cv2.IMREAD_COLOR)
+                            except Exception as b64_e:
+                                print(f"[AI Backend] Base64 save note: {b64_e}")
 
                         delegated_to_gpu = True
             except Exception as e:
                 print(f"[AI Backend] Colab delegation note: {e}")
 
+        # ── PURE COLAB MODE: If Colab GPU did not process this request, alert user ──
+        # Local system RAM fallback is disabled so you can directly verify Colab inference!
+        COLAB_STRICT_MODE = True
+        if COLAB_STRICT_MODE and not delegated_to_gpu:
+            err_msg = "Google Colab GPU Tunnel is not connected or timed out! Click the [GPU Tunnel] button in the header or call /api/set_ai_backend to connect your active trycloudflare.com tunnel."
+            print(f"[Tracking API] {err_msg}")
+            return jsonify({
+                "success": False,
+                "error": err_msg,
+                "colab_gpu_required": True,
+                "hint": "Start colab_velociti_gpu.py in Google Colab and paste the generated Cloudflare URL."
+            }), 503
+
         # Decode frame using pure OpenCV only if needed for annotation (lightweight, ~10MB RAM)
-        if raw_bytes:
+        if raw_bytes and frame is None:
             try:
                 import cv2
                 import numpy as np
@@ -426,12 +447,7 @@ def register_tracking_routes(app):
             except Exception:
                 frame = None
 
-        # If not delegated to Colab GPU, NEVER load EasyOCR or PyTorch locally on Render!
-        # Render has only 512MB RAM — loading PyTorch triggers Out-Of-Memory SIGKILL (HTTP 502).
-        # We proceed safely to filename regex or unplated suspect profiling below.
-        if not delegated_to_gpu:
-            print("[Tracking API] AI backend unavailable or timed out — safely falling back to lightweight zero-RAM mode")
-
+        # (Local RAM fallback kept disabled below)
         # Check if filename contains a known plate pattern as fallback (e.g. OD02BA4455.jpg)
         filename_plate_match = re.search(r'[A-Za-z]{2}[0-9]{1,2}[A-Za-z]{0,3}[0-9]{3,4}', file.filename or "")
 
@@ -786,7 +802,17 @@ def register_tracking_routes(app):
                 except Exception as v_err:
                     print(f"[AI Backend] Colab video processing note: {v_err}, using local fallback")
 
-            # ── 2. Local Keyframe Processing Fallback ──
+            # ── 2. Local Keyframe Processing Fallback (DISABLED FOR COLAB TESTING) ──
+            COLAB_STRICT_MODE = True
+            if not colab_video_done and COLAB_STRICT_MODE:
+                print("[Tracking API] Colab GPU is required for video analysis. Local system RAM fallback is kept disabled.")
+                with _video_jobs_lock:
+                    if job_id in _video_jobs:
+                        _video_jobs[job_id]["status"] = "failed"
+                        _video_jobs[job_id]["progress"] = 100
+                        _video_jobs[job_id]["error"] = "Colab GPU tunnel not reachable or offline. Please connect Colab tunnel."
+                return
+
             if not colab_video_done:
                 try:
                     import cv2
