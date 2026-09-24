@@ -30,12 +30,12 @@ import {
 import "./App.css";
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
+  const [currentUser, setCurrentUser] = useState(() => getCurrentUser() || { email: "admin@velociti.dev", name: "Operator", role: "admin" });
   const [activePortal, setActivePortal] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const p = params.get("portal");
     if (p === "traffic" || p === "tracking") return p;
-    return null; // Show PortalSelector by default after login
+    return "traffic"; // Directly open traffic command center without login
   });
   const [view, setView] = useState("overview");
 
@@ -248,10 +248,8 @@ export default function App() {
   }, []);
 
   if (loading) return <LoadingScreen onComplete={handleLoadingComplete} />;
+  // No authentication required
 
-  if (!currentUser) {
-    return <LoginScreen onLoginSuccess={(user) => setCurrentUser(user)} />;
-  }
 
   function handleLogout() {
     authLogout();

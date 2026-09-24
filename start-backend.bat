@@ -1,3 +1,7 @@
 @echo off
 cd /d "%~dp0city flow model"
-python server_standalone.py
+if exist "%~dp0venv\Scripts\python.exe" (
+    "%~dp0venv\Scripts\python.exe" server_standalone.py
+) else (
+    python server_standalone.py
+)

@@ -117,9 +117,11 @@ export default function MapView({ intersections, onSelectIntersection, corridor,
     const map = {};
     BBSR_INTERSECTIONS.forEach((junc, idx) => {
       // Find matching intersection in props or synthesize stable simulated stats
-      const matched = intersections.find(
-        (i) => i.name.toLowerCase() === junc.name.toLowerCase() || i.id === junc.id
-      );
+      const cleanJuncName = junc.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const matched = intersections.find((i) => {
+        const cleanName = i.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+        return cleanName.includes(cleanJuncName) || cleanJuncName.includes(cleanName) || i.id === junc.id;
+      });
 
       if (matched) {
         map[junc.id] = {
@@ -130,12 +132,14 @@ export default function MapView({ intersections, onSelectIntersection, corridor,
           coords: [junc.lat, junc.lon],
         };
       } else {
-        // Deterministic simulation stats based on index
-        const hash = (idx * 37 + 13) % 100;
-        const status = hash > 75 ? "critical" : hash > 40 ? "medium" : "low";
-        const vehicleCount = status === "critical" ? 180 + (hash * 2) : status === "medium" ? 90 + hash : 25 + hash;
-        const averageSpeed = status === "critical" ? 14 + (hash % 10) : status === "medium" ? 28 + (hash % 12) : 46 + (hash % 15);
-        const congestionPct = status === "critical" ? 75 + (hash % 22) : status === "medium" ? 42 + (hash % 25) : 12 + (hash % 20);
+        // Dynamic live simulation stats that update over time rather than static red values
+        const timeOffset = Math.floor(Date.now() / 3000);
+        const dynamicSeed = (idx * 23 + timeOffset * 7) % 100;
+        // Congestion is mostly low to medium (green & yellow), with very few critical (red)
+        const status = dynamicSeed > 84 ? "critical" : dynamicSeed > 42 ? "medium" : "low";
+        const vehicleCount = status === "critical" ? 140 + (dynamicSeed % 40) : status === "medium" ? 65 + (dynamicSeed % 45) : 20 + (dynamicSeed % 35);
+        const averageSpeed = status === "critical" ? 18 + (dynamicSeed % 10) : status === "medium" ? 34 + (dynamicSeed % 12) : 48 + (dynamicSeed % 14);
+        const congestionPct = status === "critical" ? 72 + (dynamicSeed % 16) : status === "medium" ? 38 + (dynamicSeed % 26) : 15 + (dynamicSeed % 22);
 
         map[junc.id] = {
           id: junc.id,

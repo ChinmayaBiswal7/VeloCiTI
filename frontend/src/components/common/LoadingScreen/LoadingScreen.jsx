@@ -32,7 +32,7 @@ export default function LoadingScreen({ onComplete }) {
   return (
     <div className="ls">
       <div className="ls-box">
-        <img className="brand-logo" src="/velociti-logo.jpg" alt="VeloCiTI logo" width="96" height="96" style={{ marginBottom: 12 }} />
+        <img className="brand-logo" src="/velociti-logo.jpg" alt="VeloCiTI logo" width="96" height="96" style={{ margin: "0 auto 14px auto", display: "block" }} />
         <div className="ls-title">Velo<span>CiTI</span></div>
         <div className="ls-sub">Traffic Headquarters</div>
         <div className="ls-bar-wrap"><div className="ls-bar" style={{ width: `${pct}%` }} /></div>

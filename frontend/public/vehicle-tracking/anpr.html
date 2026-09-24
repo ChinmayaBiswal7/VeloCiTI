@@ -199,6 +199,11 @@ html,body{width:100%;height:100%;background:#171615;color:#f4f2ea;font-family:-a
         <input type="file" id="vid-upload-input" accept="video/*" style="display:none" onchange="uploadVideoFile(this)"/>
       </label>
 
+      <!-- GPU TUNNEL STATUS & SETUP -->
+      <button class="btn" id="btn-gpu-tunnel" onclick="promptGpuTunnel()" style="background:#1e3a5f;border-color:#2563eb;color:#60a5fa" title="Configure Colab Cloudflare GPU Tunnel URL">
+        <i class="fa-solid fa-bolt"></i> <span id="gpu-tunnel-text">GPU Tunnel</span>
+      </button>
+
       <!-- CLEAR SCAN & RESET DB -->
       <button class="btn danger" onclick="clearLiveScan()" title="Clear backend DB & reset scan"><i class="fa-solid fa-broom"></i> Clear Scan</button>
     </div>
@@ -1168,9 +1173,54 @@ function trackFromModal(){
   window.location.href = '/?track=' + encodeURIComponent(selectedPlateForModal);
 }
 
+async function checkGpuTunnelStatus(){
+  try{
+    const res = await fetch(API + '/api/set_ai_backend').then(r=>r.json());
+    const btn = document.getElementById('btn-gpu-tunnel');
+    const txt = document.getElementById('gpu-tunnel-text');
+    if(res && res.ai_backend){
+      btn.style.background = '#14532d';
+      btn.style.borderColor = '#22c55e';
+      btn.style.color = '#86efac';
+      txt.textContent = 'GPU Online';
+      btn.title = 'Colab GPU Tunnel active: ' + res.ai_backend;
+    }else{
+      btn.style.background = '#1e3a5f';
+      btn.style.borderColor = '#2563eb';
+      btn.style.color = '#60a5fa';
+      txt.textContent = 'GPU Tunnel';
+      btn.title = 'Configure Colab Cloudflare GPU Tunnel URL';
+    }
+  }catch(e){}
+}
+
+async function promptGpuTunnel(){
+  const currRes = await fetch(API + '/api/set_ai_backend').then(r=>r.json()).catch(()=>({}));
+  const current = currRes.ai_backend || '';
+  const newUrl = prompt('Enter Google Colab Cloudflare Tunnel URL (e.g., https://xxxx.trycloudflare.com):', current);
+  if(newUrl !== null && newUrl.trim()){
+    try{
+      const setRes = await fetch(API + '/api/set_ai_backend', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({url: newUrl.trim()})
+      }).then(r=>r.json());
+      if(setRes && setRes.success){
+        alert('GPU Tunnel connected successfully: ' + setRes.ai_backend);
+        checkGpuTunnelStatus();
+      }else{
+        alert('Error connecting tunnel: ' + JSON.stringify(setRes));
+      }
+    }catch(err){
+      alert('Failed to set AI backend: ' + err.message);
+    }
+  }
+}
+
 // Auto-clear stale session data on every page load — always start fresh
 (async () => {
   try { await fetch(API + '/api/anpr/clear', {method: 'POST'}); } catch(e) {}
+  checkGpuTunnelStatus();
   pollTimer = setInterval(pollLiveDetections, 1200);
   pollLiveDetections();
 })();
