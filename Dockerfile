@@ -20,8 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ffmpeg lib
 COPY ["city flow model/requirements.txt", "./"]
 RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && pip install --no-cache-dir -r requirements.txt
 
-# Pre-cache AI Vision models (YOLOv8n + EasyOCR) into container image so inference is instant
-RUN python -c "import easyocr; easyocr.Reader(['en'], gpu=False); from ultralytics import YOLO; YOLO('yolov8n.pt')"
+# NOTE: Models are NOT pre-cached here to stay within Render 512MB RAM.
+# All ML inference is delegated to Google Colab GPU backend at runtime.
 
 # Copy CityFlow Backend code
 COPY ["city flow model/", "./cityflow_model/"]

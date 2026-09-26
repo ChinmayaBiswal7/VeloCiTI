@@ -30,6 +30,11 @@ export default function ImageAnalysisPanel() {
       files.forEach((f) => fd.append("files", f));
       fd.append("camera_id", cameraId);
       const res = await fetch("/api/webcam/analyze_image", { method: "POST", body: fd });
+      if (!res.ok) {
+        let msg = `Server returned ${res.status}`;
+        try { const j = await res.json(); msg = j.error || msg; } catch {}
+        throw new Error(msg);
+      }
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Analysis failed");
       setResults(data.results);
@@ -37,7 +42,11 @@ export default function ImageAnalysisPanel() {
       const all = data.results.flatMap((r) => r.cards || []);
       if (all.length === 1) setOpenCard(all[0]);
     } catch (e) {
-      setError(e.message || "Could not reach the analysis backend.");
+      if (e instanceof TypeError && e.message === "Failed to fetch") {
+        setError("Cannot connect to the backend server. Make sure the Python server is running on port 5000.");
+      } else {
+        setError(e.message || "Could not reach the analysis backend.");
+      }
     } finally {
       setLoading(false);
     }

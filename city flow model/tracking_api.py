@@ -77,16 +77,21 @@ def get_yolo_model():
     if _upload_yolo_model is None:
         try:
             import torch
-            torch.set_num_threads(1)
+            num_c = min(8, max(2, os.cpu_count() or 4))
+            torch.set_num_threads(num_c)
             torch.set_grad_enabled(False)
             from ultralytics import YOLO
             for ypath in [
+                "indian_traffic_yolov8.pt",
+                os.path.join(PROTOTYPE_DIR, "indian_traffic_yolov8.pt"),
+                os.path.join(ROOT_DIR, "indian_traffic_yolov8.pt"),
                 os.path.join(PROTOTYPE_DIR, "yolov8n.pt"),
                 os.path.join(ROOT_DIR, "prototype", "yolov8n.pt"),
                 "yolov8n.pt"
             ]:
                 if os.path.exists(ypath):
                     _upload_yolo_model = YOLO(ypath)
+                    print(f"[Tracking API] Loaded YOLO weights: {ypath}")
                     break
             if _upload_yolo_model is None:
                 _upload_yolo_model = YOLO("yolov8n.pt")

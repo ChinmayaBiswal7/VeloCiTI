@@ -17,6 +17,7 @@ import LoadingScreen from "./components/common/LoadingScreen/LoadingScreen";
 import LoginScreen from "./components/common/Login/LoginScreen";
 import PortalSelector from "./components/PortalSelector/PortalSelector";
 import VehicleTrackingView from "./components/views/VehicleTracking/VehicleTrackingView";
+import GuidedTour from "./components/common/GuidedTour/GuidedTour";
 import { getCurrentUser, logout as authLogout } from "./services/authService";
 import { BBSR_INTERSECTIONS, BBSR_INTERSECTION_MAP } from "./data/bbsrCityData";
 
@@ -35,7 +36,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const p = params.get("portal");
     if (p === "traffic" || p === "tracking") return p;
-    return "traffic"; // Directly open traffic command center without login
+    return "tracking"; // Start directly from ANPR Vehicle Intelligence portal
   });
   const [view, setView] = useState("overview");
 
@@ -271,12 +272,20 @@ export default function App() {
   // If Vehicle Tracking selected, render dedicated Citywide ANPR & Journey tracking view
   if (activePortal === "tracking") {
     return (
-      <VehicleTrackingView
-        currentUser={currentUser}
-        onSwitchToTraffic={() => setActivePortal("traffic")}
-        onOpenHub={() => setActivePortal(null)}
-        onLogout={handleLogout}
-      />
+      <div style={{ width: "100%", height: "100%", position: "relative" }}>
+        <VehicleTrackingView
+          currentUser={currentUser}
+          onSwitchToTraffic={() => setActivePortal("traffic")}
+          onOpenHub={() => setActivePortal(null)}
+          onLogout={handleLogout}
+        />
+        <GuidedTour
+          currentPortal="tracking"
+          onSwitchPortal={setActivePortal}
+          currentView={view}
+          onNavigate={setView}
+        />
+      </div>
     );
   }
 
@@ -364,6 +373,13 @@ export default function App() {
           {view === "webcam" && <LiveWebcamView />}
         </div>
       </div>
+      <GuidedTour
+        currentPortal="traffic"
+        onSwitchPortal={setActivePortal}
+        currentView={view}
+        onNavigate={setView}
+        onSelectIntersection={handleCellClick}
+      />
     </div>
   );
 }

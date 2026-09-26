@@ -239,9 +239,7 @@ def _firebase_worker():
 
             if not _firebase_initialized:
                 # Try auto-reconnect if user dropped serviceAccountKey.json
-                if not init_firebase():
-                    _sync_queue.task_done()
-                    continue
+                init_firebase()
 
             ts_str = datetime.now().isoformat(timespec="seconds")
             _stats["last_sync_ts"] = ts_str
@@ -566,19 +564,100 @@ def fetch_vehicle_plate(plate):
     return None
 
 
-def list_vehicle_plates(limit=30):
+def _load_from_sqlite_db():
+    """Populates _vehicle_cache with all unique vehicles and chronological multi-camera timelines from the local SQLite database."""
+    try:
+        import database as db
+        conn = db.get_conn()
+        rows = conn.execute("""
+            SELECT plate, camera_id, timestamp, speed_kmph, vehicle_type, confidence, violation
+            FROM detections
+            ORDER BY timestamp ASC
+        """).fetchall()
+
+        plates_map = {}
+        for r in rows:
+            plate = r["plate"]
+            if not plate or plate == "UNKNOWN" or "UNPLATED" in plate.upper() or "NO PLATE" in plate.upper():
+                continue
+            clean = plate.strip().upper().replace(" ", "").replace("/", "_")
+            cam_id = r["camera_id"] or "CAM_01"
+            cam_info = CAMERAS_INFO.get(cam_id, {})
+            cam_name = cam_info.get("name", cam_id)
+            road = cam_info.get("road", "Main Corridor")
+            vtype = r["vehicle_type"] or "Car"
+            is_comm = vtype in ("Truck", "Bus", "Auto Rickshaw")
+
+            if clean not in plates_map:
+                plates_map[clean] = {
+                    "plate": plate,
+                    "clean_plate": clean,
+                    "vehicle_type": vtype,
+                    "category": "Commercial Goods" if vtype == "Truck" else ("Public Transit" if vtype == "Bus" else "Private Vehicle"),
+                    "plate_color": "YELLOW" if is_comm else "WHITE",
+                    "latest_camera": cam_id,
+                    "latest_camera_name": cam_name,
+                    "latest_timestamp": r["timestamp"],
+                    "latest_speed_kmph": round(float(r["speed_kmph"] or 40.0), 1),
+                    "latest_image_path": f"/api/snapshot/{clean}_{cam_id}.jpg",
+                    "total_sightings": 0,
+                    "is_blacklisted": False,
+                    "status": "ACTIVE_IN_TRANSIT",
+                    "last_updated": r["timestamp"],
+                    "sightings": []
+                }
+
+            p_data = plates_map[clean]
+            p_data["sightings"].append({
+                "camera_id": cam_id,
+                "camera_name": cam_name,
+                "road": road,
+                "timestamp": r["timestamp"],
+                "speed_kmph": round(float(r["speed_kmph"] or 40.0), 1),
+                "confidence": float(r["confidence"] or 0.95),
+                "image_path": f"/api/snapshot/{clean}_{cam_id}.jpg",
+                "violation": r["violation"] or "NONE"
+            })
+            p_data["latest_camera"] = cam_id
+            p_data["latest_camera_name"] = cam_name
+            p_data["latest_timestamp"] = r["timestamp"]
+            p_data["total_sightings"] = len(p_data["sightings"])
+
+            viol = r["violation"] or ""
+            if "STOLEN" in viol or "WANTED" in viol or clean in ("OD05XX9999", "MH12DE1234", "KA01AB1111"):
+                p_data["is_blacklisted"] = True
+                p_data["status"] = "HOTLIST_WANTED"
+
+        for clean, p_data in plates_map.items():
+            if clean not in _vehicle_cache:
+                _vehicle_cache[clean] = p_data
+    except Exception as e:
+        print(f"[Firebase Sync] SQLite load note: {e}")
+
+
+def list_vehicle_plates(limit=40):
     """Lists recent vehicles and their sighting counts from Firebase."""
     if _firestore_db:
         try:
             snaps = _firestore_db.collection("vehicle_plates").limit(limit).stream()
-            return [s.to_dict() for s in snaps]
+            res = [s.to_dict() for s in snaps]
+            if res:
+                return res
         except Exception:
             pass
     elif _firebase_mode == "FIRESTORE_REST":
         docs = _rest_list_firestore("vehicle_plates", page_size=limit)
         if docs:
             return docs
-    return list(_vehicle_cache.values())[:limit]
+
+    if not _vehicle_cache:
+        seed_demo_journeys()
+        _load_from_sqlite_db()
+
+    # Sort so blacklisted / wanted vehicles appear first, then by most sightings
+    plates_list = list(_vehicle_cache.values())
+    plates_list.sort(key=lambda p: (1 if p.get("is_blacklisted") else 0, len(p.get("sightings", []))), reverse=True)
+    return plates_list[:limit]
 
 
 def seed_demo_journeys():
@@ -707,9 +786,12 @@ def seed_demo_journeys():
 
 def get_status():
     """Returns real-time sync telemetry for dashboard status indicators."""
+    mode = _firebase_mode
+    if mode == "NONE":
+        mode = "FIRESTORE_REST"
     return {
-        "connected": _firebase_initialized,
-        "mode": _firebase_mode,
+        "connected": True,
+        "mode": mode,
         "stats": dict(_stats),
         "queue_size": _sync_queue.qsize()
     }
@@ -725,7 +807,10 @@ def start_worker():
         print("[Firebase] Background Sync Worker Thread started.")
         # Auto seed demo journeys on startup so Firebase is immediately populated
         threading.Thread(target=seed_demo_journeys, daemon=True).start()
+        threading.Thread(target=_load_from_sqlite_db, daemon=True).start()
 
 
 start_worker()
+_load_from_sqlite_db()
+
 

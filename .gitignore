@@ -29,6 +29,8 @@ prototype/data/
 city flow model/data/
 prototype/scratch_*.jpg
 prototype/test_*.jpg
+crop_*.jpg
+debug_*.png
 
 # Python
 __pycache__/

@@ -123,11 +123,16 @@ def _load_clip():
         _clip["tried"] = True
         try:
             import torch
+            # CLIP ViT-Large (430M params) takes 10+ minutes on CPU and freezes everything.
+            # Only enable if CUDA GPU is available or explicitly enabled via ENABLE_CPU_CLIP=1.
+            if not torch.cuda.is_available() and os.environ.get("ENABLE_CPU_CLIP", "0") != "1":
+                print("[Vehicle Intel] Running in ultra-fast mode (CPU CLIP bypassed for instant <1s response).")
+                return False
             from transformers import CLIPModel, CLIPProcessor
             _clip["model"] = CLIPModel.from_pretrained(CLIP_MODEL_ID, local_files_only=True).eval()
             _clip["proc"] = CLIPProcessor.from_pretrained(CLIP_MODEL_ID, local_files_only=True)
             _clip["torch"] = torch
-            print(f"[Vehicle Intel] CLIP loaded: {CLIP_MODEL_ID}")
+            print(f"[Vehicle Intel] CLIP loaded on GPU: {CLIP_MODEL_ID}")
         except Exception as e:
             print(f"[Vehicle Intel] CLIP unavailable ({e}); attribute fields will be blank.")
     return _clip["model"] is not None
@@ -248,22 +253,38 @@ def person_attributes(person_crops, is_rider):
     return results
 
 
-_STD_PLATE = re.compile(r"^([A-Z]{2})(\d{2})([A-Z]{1,3})(\d{4})$")
+_STD_PLATE = re.compile(r"^([A-Z]{2})(\d{1,2})([A-Z]{0,3})(\d{1,4})$")
 _BH_PLATE = re.compile(r"^(\d{2})BH(\d{4})([A-Z]{1,2})$")
+_TEMP_PLATE = re.compile(r"^(T[RC]?\d{4})([A-Z]{2})(\d{1,5})([A-Z0-9]{0,2})$")
 
 
 def clean_plate(text):
-    return re.sub(r"[^A-Z0-9]", "", (text or "").upper())
+    if not text:
+        return ""
+    try:
+        import anpr
+        t = anpr.strip_hsrp_ind_prefix(text)
+        t = anpr.fix_positional_characters(t)
+    except Exception:
+        t = text
+    return re.sub(r"[^A-Z0-9]", "", (t or "").upper())
 
 
 def plate_format_valid(text):
-    """True for a MoRTH standard plate with a real state code, or a BH-series plate."""
+    """True for a MoRTH standard plate with a real state code, a BH-series plate, or temporary/dealer plate."""
     import rto
     p = clean_plate(text)
+    if len(p) < 6:
+        return False
     m = _STD_PLATE.match(p)
     if m:
         return m.group(1) in rto.STATE_NAMES
-    return bool(_BH_PLATE.match(p))
+    if _BH_PLATE.match(p):
+        return True
+    m_temp = _TEMP_PLATE.match(p)
+    if m_temp:
+        return m_temp.group(2) in rto.STATE_NAMES or m_temp.group(2) in ("UP", "DL", "MH", "KA", "TN", "TS", "OD", "HR", "GJ", "RJ", "WB", "MP", "PB", "BR", "KL")
+    return p[:2] in rto.STATE_NAMES and any(c.isdigit() for c in p[2:])
 
 
 def decode_plate(text):
@@ -280,6 +301,22 @@ def decode_plate(text):
     if m:
         return {"format": "BH series", "registration_year": "20" + m.group(1),
                 "number": m.group(2), "series": m.group(3)}
+    m_temp = _TEMP_PLATE.match(p)
+    if m_temp:
+        state_code = m_temp.group(2)
+        state_name = rto.STATE_NAMES.get(state_code, state_code)
+        date_code = m_temp.group(1)
+        month = date_code[1:3] if len(date_code) >= 3 else ""
+        year = "20" + date_code[3:5] if len(date_code) >= 5 else ""
+        issued_date = f"{month}/{year}" if month and year else date_code
+        return {
+            "format": "Temporary Registration (MoRTH CMVR)",
+            "state_code": state_code,
+            "state": state_name,
+            "series": f"{m_temp.group(1)} {state_code}",
+            "number": m_temp.group(3) + (m_temp.group(4) or ""),
+            "issued_period": issued_date
+        }
     return None
 
 

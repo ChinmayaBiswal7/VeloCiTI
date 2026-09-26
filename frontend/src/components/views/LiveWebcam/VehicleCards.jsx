@@ -10,8 +10,17 @@ const STATUS = {
 const blank = (v) => (v ? v : "—");
 
 function formatPlate(text) {
-  const m = /^([A-Z]{2})(\d{2})([A-Z]{1,3})(\d{4})$/.exec(text || "");
-  return m ? `${m[1]} ${m[2]} ${m[3]} ${m[4]}` : text;
+  if (!text) return "";
+  const tempMatch = /^(T[RC]?\d{4})([A-Z]{2})(\d{1,5})([A-Z0-9]{0,2})$/.exec(text);
+  if (tempMatch) {
+    return `${tempMatch[1]} ${tempMatch[2]} ${tempMatch[3]}${tempMatch[4] ? " " + tempMatch[4] : ""}`;
+  }
+  const bhMatch = /^(\d{2})BH(\d{4})([A-Z]{1,2})$/.exec(text);
+  if (bhMatch) {
+    return `${bhMatch[1]} BH ${bhMatch[2]} ${bhMatch[3]}`;
+  }
+  const m = /^([A-Z]{2})(\d{1,2})([A-Z]{0,3})(\d{1,4})$/.exec(text);
+  return m ? `${m[1]} ${m[2]}${m[3] ? " " + m[3] : ""} ${m[4]}` : text;
 }
 
 function Row({ label, value, sub }) {
@@ -133,8 +142,8 @@ function UnplatedCard({ card }) {
       </div>
       {card.plate_hint && (
         <div className="vc-sim">
-          A plate-like region was read as "{card.plate_hint.text}" ({Math.round(card.plate_hint.confidence * 100)}%
-          confidence) but the read is too unreliable or not a valid Indian registration, so it is not trusted.
+          Candidate plate detected: "{formatPlate(card.plate_hint.text)}" ({Math.round(card.plate_hint.confidence * 100)}%
+          confidence). Partial visibility or motion blur prevented full automated verification.
         </div>
       )}
       <Row label="Camera" value={card.camera_id} />

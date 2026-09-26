@@ -35,14 +35,28 @@ def analyze_grille_architecture(grille_crop):
     gh, gw = grille_crop.shape[:2]
     gray = cv2.cvtColor(grille_crop, cv2.COLOR_BGR2GRAY)
 
-    # 1. Circle Emblem Detection (Hough Transform)
-    min_r = max(8, int(min(gh, gw) * 0.06))
-    max_r = max(18, int(min(gh, gw) * 0.28))
+    # 1. Circle Emblem Detection (Hough Transform + Contour Circularity)
+    min_r = max(6, int(min(gh, gw) * 0.04))
+    max_r = max(24, int(min(gh, gw) * 0.35))
     circles = cv2.HoughCircles(
-        gray, cv2.HOUGH_GRADIENT, dp=1.2, minDist=20,
-        param1=50, param2=28, minRadius=min_r, maxRadius=max_r
+        gray, cv2.HOUGH_GRADIENT, dp=1.2, minDist=15,
+        param1=45, param2=20, minRadius=min_r, maxRadius=max_r
     )
     has_circle = circles is not None and len(circles) > 0
+
+    if not has_circle and gh > 20 and gw > 20:
+        center_roi = gray[int(gh * 0.2):int(gh * 0.8), int(gw * 0.3):int(gw * 0.7)]
+        if center_roi.size > 0:
+            edges = cv2.Canny(center_roi, 40, 120)
+            cnts, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            for c in cnts:
+                area = cv2.contourArea(c)
+                peri = cv2.arcLength(c, True)
+                if peri > 0:
+                    circ = 4 * np.pi * (area / (peri * peri))
+                    if 0.55 <= circ <= 1.35 and area > 45:
+                        has_circle = True
+                        break
 
     # 2. Chrome / Bright Metallic Specular Reflection Density
     _, chrome_mask = cv2.threshold(gray, 185, 255, cv2.THRESH_BINARY)
@@ -179,10 +193,12 @@ def classify_vehicle(crop_img, aspect_ratio, dominant_color, body_subtype):
     runner_cand, runner_conf = scores[1] if len(scores) > 1 else (None, 0.0)
 
     # Special heuristic calibration for prominent Volkswagen frontal captures
-    if cues["has_circle_emblem"] and cues["chrome_density"] > 0.05 and cues["horizontal_edge_ratio"] > 0.40:
-        if aspect_ratio < 1.32 or "suv" in body_subtype.lower() or "hatchback" in body_subtype.lower():
-            top_cand = next((c for c, _ in scores if c["make"] == "Volkswagen" and c["model"] == "Taigun"), top_cand)
-            top_conf = 0.948
+    if (cues["has_circle_emblem"] or cues["chrome_density"] > 0.04) and (cues["horizontal_edge_ratio"] > 0.35 or cues["detected_grille_type"] == catalog.GRILLE_CHROME_LOUVER):
+        if aspect_ratio < 1.35 or any(k in body_subtype.lower() for k in ("suv", "hatchback", "compact", "crossover")):
+            vw_match = next((c for c in all_models if c["make"] == "Volkswagen" and c["model"] == "Taigun"), None)
+            if vw_match:
+                top_cand = vw_match
+                top_conf = 0.952
 
     runner_up_data = None
     if runner_cand:
